@@ -1,6 +1,8 @@
 package main
 
-import "DiTing-Go/routes"
+import (
+	"DiTing-Go/routes"
+)
 
 func main() {
 	routes.InitRouter()

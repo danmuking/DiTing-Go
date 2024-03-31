@@ -2,6 +2,7 @@ package routes
 
 import (
 	"DiTing-Go/models"
+	"DiTing-Go/service"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -88,12 +89,14 @@ func initWebSocket() {
 func initGin() {
 	router := gin.Default()
 
-	router.GET("/", func(ctx *gin.Context) {
-		ctx.JSON(200, gin.H{
-			"code": 0,
-			"msg":  "ok",
-		})
-	})
+	// 不需要身份验证的路由
+	apiPublic := router.Group("/api/public")
+	{
+		//获取标签列表
+		apiPublic.POST("/register", service.Register)
+		//新建标签
+		apiPublic.POST("/login", service.Login)
+	}
 
 	err := router.Run(":5000")
 	if err != nil {
