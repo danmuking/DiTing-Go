@@ -11,7 +11,7 @@
 欢迎来到 DiTing！这是一个简单、轻量级的即时通讯（IM）开源项目，采用 Go 编写，严格遵守互联网开发标准。致力于为初学者提供一个友好、易于上手的 IM 解决方案，让你可以轻松入门并开始构建自己的即时通讯应用。
 
 ## 项目导航
-- 学习文档：[DiTing文档]()
+- 学习文档：[DiTing文档](https://danmuking.github.io/)
 - 项目交流群：🎉 欢迎加入 DiTing 交流群！这是一个与其他开发者交流、分享经验和获取项目相关支持的地方。在这里你可以不仅可以提出遇到的任何问题，同时欢迎你与其他开发者交流并且对DiTing提出任何建议！
 - 码云仓库：[Gitee](https://gitee.com/danmuking/DiTing)
 - Github仓库：[Github](https://github.com/danmuking/DiTing-Go)
