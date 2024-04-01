@@ -1,11 +1,14 @@
 package routes
 
 import (
+	_ "DiTing-Go/docs"
 	"DiTing-Go/models"
 	"DiTing-Go/service"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"log"
 	"net/http"
 )
@@ -89,6 +92,8 @@ func initWebSocket() {
 func initGin() {
 	router := gin.Default()
 
+	//添加swagger访问路由
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	// 不需要身份验证的路由
 	apiPublic := router.Group("/api/public")
 	{
