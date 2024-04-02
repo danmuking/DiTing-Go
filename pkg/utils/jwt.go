@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"time"
 )
@@ -10,17 +11,17 @@ import (
 var jwtSecret = []byte(viper.GetString("jwt.secret"))
 
 type Claims struct {
-	Username string `json:"username"`
+	Uid int64 `json:"uid"`
 	jwt.StandardClaims
 }
 
 // GenerateToken 生成token
-func GenerateToken(username string) (string, error) {
+func GenerateToken(uid int64) (string, error) {
 	nowTime := time.Now()
 	expireTime := nowTime.Add(3 * time.Hour)
 
 	claims := Claims{
-		username,
+		uid,
 		jwt.StandardClaims{
 			ExpiresAt: expireTime.Unix(),
 			Issuer:    "diting-go",
@@ -35,17 +36,17 @@ func GenerateToken(username string) (string, error) {
 	return token, err
 }
 
-// 解析token
-func ParseToken(token string) (*Claims, error) {
-	tokenClaims, err := jwt.ParseWithClaims(token, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+// ParseToken 解析token
+func ParseToken(tokenString string) (*Claims, error) {
+	// 解析token
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (i interface{}, err error) {
 		return jwtSecret, nil
 	})
-
-	if tokenClaims != nil {
-		if claims, ok := tokenClaims.Claims.(*Claims); ok && tokenClaims.Valid {
-			return claims, nil
-		}
+	if err != nil {
+		return nil, err
 	}
-
-	return nil, err
+	if claims, ok := token.Claims.(*Claims); ok && token.Valid { // 校验token
+		return claims, nil
+	}
+	return nil, errors.New("invalid token")
 }

@@ -1,0 +1,70 @@
+definitions:
+  resp.ResponseData:
+    properties:
+      code:
+        description: 状态码
+        type: integer
+      data:
+        description: 响应数据
+      message:
+        description: 响应消息
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /api/public/login:
+    post:
+      parameters:
+      - description: 用户名
+        in: body
+        name: name
+        required: true
+        schema:
+          type: string
+      - description: 密码
+        in: body
+        name: password
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            $ref: '#/definitions/resp.ResponseData'
+        "500":
+          description: 内部错误
+          schema:
+            $ref: '#/definitions/resp.ResponseData'
+      summary: 用户登录
+  /api/public/register:
+    post:
+      parameters:
+      - description: 用户名
+        in: body
+        name: name
+        required: true
+        schema:
+          type: string
+      - description: 密码
+        in: body
+        name: password
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            $ref: '#/definitions/resp.ResponseData'
+        "500":
+          description: 内部错误
+          schema:
+            $ref: '#/definitions/resp.ResponseData'
+      summary: 用户注册
+swagger: "2.0"

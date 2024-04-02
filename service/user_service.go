@@ -77,6 +77,6 @@ func Login(c *gin.Context) {
 		return
 	}
 	// 生成jwt
-	token, _ := utils.GenerateToken(user.Name)
+	token, _ := utils.GenerateToken(user.ID)
 	resp.SuccessResponse(c, token)
 }

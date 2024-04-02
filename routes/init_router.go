@@ -3,6 +3,7 @@ package routes
 import (
 	_ "DiTing-Go/docs"
 	"DiTing-Go/models"
+	"DiTing-Go/pkg/middleware/jwt"
 	"DiTing-Go/service"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -101,6 +102,23 @@ func initGin() {
 		apiPublic.POST("/register", service.Register)
 		//新建标签
 		apiPublic.POST("/login", service.Login)
+	}
+
+	apiContact := router.Group("/api/contact")
+	apiContact.Use(jwt.JWT())
+	{
+		//添加好友
+		apiContact.POST("/add", service.ApplyFriend)
+		//删除好友
+		apiContact.DELETE("/delete", service.DeleteFriend)
+		//获取好友申请列表
+		apiContact.GET("/getApplyList", service.Login)
+		//同意好友申请
+		apiContact.POST("/agree", service.Login)
+		//获取好友列表
+		apiContact.GET("/getContactList", service.Login)
+		//判断是否是好友
+		apiContact.GET("/isFriend", service.Login)
 	}
 
 	err := router.Run(":5000")
