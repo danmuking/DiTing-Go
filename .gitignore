@@ -21,3 +21,7 @@
 # Go workspace file
 go.work
 *.yml
+*.sql
+*.yaml
+/sql/
+/conf/
