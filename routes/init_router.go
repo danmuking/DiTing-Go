@@ -112,7 +112,7 @@ func initGin() {
 		//删除好友
 		apiContact.DELETE("/delete", service.DeleteFriend)
 		//获取好友申请列表
-		apiContact.GET("/getApplyList", service.Login)
+		apiContact.GET("/getApplyList", service.GetApplyList)
 		//同意好友申请
 		apiContact.POST("/agree", service.Login)
 		//获取好友列表
