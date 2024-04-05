@@ -118,7 +118,9 @@ func initGin() {
 		//获取好友列表
 		apiContact.GET("/getContactList", service.Login)
 		//判断是否是好友
-		apiContact.GET("/isFriend", service.Login)
+		apiContact.GET("/isFriend/:friendUid", service.IsFriend)
+		//好友申请未读数量
+		apiContact.GET("/unreadApplyNum", service.UnreadApplyNum)
 	}
 
 	err := router.Run(":5000")
