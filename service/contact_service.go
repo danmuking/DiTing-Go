@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/copier"
 	"log"
+	"strconv"
 )
 
 var q *query.Query
@@ -213,17 +214,44 @@ func Agree(c *gin.Context) {
 
 // GetApplyList 获取用户好友申请列表
 //
-//	@Summary	获取用户好友申请列表
-//	@Success	200	{object}	resp.ResponseData	"成功"
-//	@Failure	500	{object}	resp.ResponseData	"内部错误"
-//	@Router		/api/contact/getApplyList [get]
+//		@Summary	获取用户好友申请列表
+//	    @Produce 	json
+//		@Security ApiKeyAuth
+//		@Param		last_id	query	int					true	"last_id"
+//		@Param		limit	query	int					true	"limit"
+//		@Success	200	{object}	resp.ResponseData	"成功"
+//		@Failure	500	{object}	resp.ResponseData	"内部错误"
+//		@Router		/api/contact/getApplyList [get]
 func GetApplyList(c *gin.Context) {
 
 	ctx := context.Background()
 
 	uid := c.GetInt64("uid")
+	var n int
 
 	ua := query.UserApply
+	u := query.User
+
+	var uids = make([]int64, 0)
+	var usersVO = make([]vo.UserVo, 0)
+
+	// 默认值
+	var lastID int64 = 0
+	var limit int = 20
+
+	lastIDStr := c.Query("last_id")
+	limitStr := c.Query("limit")
+
+	// 游标是否为空
+	if lastIDStr != "" {
+		lastID, _ = strconv.ParseInt(lastIDStr, 10, 64)
+	}
+
+	// limit 是否为空
+	if limitStr != "" {
+		limit, _ = strconv.Atoi(limitStr)
+	}
+
 	// 获取 UserApply 表中 TargetID 等于 uid(登录用户ID)的用户ID集合
 	// select uid form user_apply where target_id = ?
 	userApplyIDs, err := ua.WithContext(ctx).Select(ua.UID).Where(ua.TargetID.Eq(uid)).Find()
@@ -234,29 +262,26 @@ func GetApplyList(c *gin.Context) {
 		return
 	}
 
-	var uids = make([]int64, 0)
-	var n int
 	n = len(userApplyIDs)
 	for i := 0; i < n; i++ {
 		uids = append(uids, userApplyIDs[i].UID)
 	}
 
-	// 根据 uids 集合查询 User 表sex
-	// select id , name , avatar , sex , active_status , last_opt_time form user where status = 0 and id in (...)
-	u := query.User
-	users, err := u.WithContext(ctx).Select(u.ID, u.Name, u.Avatar, u.Sex, u.ActiveStatus, u.LastOptTime).Where(u.ID.In(uids...), u.Status.Eq(0)).Find()
+	// 根据 uids 集合查询 User 表，基于游标分页查询，游标id为前端传来的 last_id（某页数据最后一条记录的id）
+	// select id , name , avatar , sex , active_status , last_opt_time form user where status = 0 and id in (...) and id > last_Id limit 20
+	users, err := u.WithContext(ctx).Select(u.ID, u.Name, u.Avatar, u.Sex, u.ActiveStatus, u.LastOptTime).Where(u.ID.In(uids...), u.Status.Eq(0), u.ID.Gt(lastID)).Limit(limit).Find()
 	if err != nil {
 		// todo 添加日志系统
 		log.Printf("DB excete Sql happen [ERROR], err msg is : %v", err)
 		resp.ErrorResponse(c, "系统繁忙，亲稍后再试")
-		c.Abort()
 		return
 	}
-
-	var usersVO = make([]vo.UserVo, 0)
 
 	// 数据转换
 	_ = copier.Copy(&usersVO, &users)
 
-	resp.SuccessResponse(c, usersVO)
+	resp.SuccessResponse(c, vo.PageListResponse{
+		List:  usersVO,
+		Total: len(usersVO),
+	})
 }
