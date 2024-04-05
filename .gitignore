@@ -24,4 +24,4 @@ go.work
 *.sql
 *.yaml
 /sql/
-/conf/
+/conf/config.yml
