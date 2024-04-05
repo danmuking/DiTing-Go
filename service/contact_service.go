@@ -138,6 +138,20 @@ func DeleteFriend(c *gin.Context) {
 	return
 }
 
+// IsFriend 是否为好友关系
+//
+//	@Summary	是否为好友关系
+//	@Produce	json
+//	@Param		uid	body		int					true	"好友uid"
+//	@Success	200	{object}	resp.ResponseData	"成功"
+//	@Failure	500	{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/contact/isFriend/:friendUid [get]
+func IsFriend(c *gin.Context) {
+	uid := c.GetInt64("uid")
+	friendUid, _ := strconv.ParseInt(c.Param("friendUid"), 10, 64)
+	resp.SuccessResponse(c, isFriend(c, uid, int64(friendUid)))
+}
+
 func isFriend(c *gin.Context, uid, friendUid int64) bool {
 	// 检查是否已经是好友关系
 	friend, err := query.UserFriend.WithContext(context.Background()).Where(query.UserFriend.UID.Eq(uid), query.UserFriend.FriendUID.Eq(friendUid)).First()
@@ -284,4 +298,28 @@ func GetApplyList(c *gin.Context) {
 		List:  usersVO,
 		Total: len(usersVO),
 	})
+}
+
+// UnreadApplyNum 好友申请未读数量
+//
+//	@Summary	好友申请未读数量
+//	@Success	200			{object}	resp.ResponseData	"成功"
+//	@Failure	500			{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/public/login [post]
+func UnreadApplyNum(c *gin.Context) {
+	ctx := context.Background()
+
+	uid := c.GetInt64("uid")
+
+	ua := query.UserApply
+
+	// 获取 UserApply 表中 TargetID 等于 uid(登录用户ID)的用户ID集合
+	num, err := ua.WithContext(ctx).Where(ua.TargetID.Eq(uid), ua.ReadStatus.Eq(enum.NO), ua.Status.Eq(enum.NO)).Count()
+	if err != nil {
+		log.Printf("DB excete Sql happen [ERROR], err msg is : %v", err)
+		resp.ErrorResponse(c, "系统繁忙，亲稍后再试")
+		c.Abort()
+		return
+	}
+	resp.SuccessResponse(c, num)
 }
