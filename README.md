@@ -27,11 +27,22 @@
 | Swagger-UI	 | API文档生成工具      |https://github.com/swagger-api/swagger-ui|
 
 ### Star 趋势
-[<img alt="Star History Chart" src="https://api.star-history.com/svg?repos=danmuking/DiTing&amp;type=Date"/>]
+<img alt="Star History Chart" src="https://api.star-history.com/svg?repos=danmuking/DiTing&amp;type=Date"/>
 
 ### 贡献者
 
-请阅读**CONTRIBUTING.md** 查阅为该项目做出贡献的开发者。
+<!-- readme: collaborators,contributors -start -->
+<table>
+<tr>
+    <td align="center">
+        <a href="https://github.com/danmuking">
+            <img src="https://avatars.githubusercontent.com/u/47711726?v=4" width="100;" alt="danmuking"/>
+            <br />
+            <sub><b>LinYi</b></sub>
+        </a>
+    </td></tr>
+</table>
+<!-- readme: collaborators,contributors -end -->
 
 
 ### 作者

@@ -24,4 +24,6 @@ go.work
 *.sql
 *.yaml
 /sql/
-/conf/
+/conf/config.yml
+!/conf/config_example.yml
+!/.github/workflows/reademe-contributors.yml

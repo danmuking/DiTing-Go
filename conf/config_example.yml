@@ -1,0 +1,7 @@
+mysql:
+  host: xxx.xxx.xxx.xx
+  port: 3306
+  username: diting
+  password: diting
+jwt:
+  secret: diting
