@@ -25,3 +25,4 @@ go.work
 *.yaml
 /sql/
 /conf/config.yml
+!/conf/config_example.yml
