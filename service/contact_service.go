@@ -4,10 +4,13 @@ import (
 	"DiTing-Go/dal"
 	"DiTing-Go/dal/model"
 	"DiTing-Go/dal/query"
+	"DiTing-Go/models/vo"
 	"DiTing-Go/pkg/enum"
 	"DiTing-Go/pkg/resp"
 	"context"
 	"github.com/gin-gonic/gin"
+	"github.com/jinzhu/copier"
+	"log"
 )
 
 var q *query.Query
@@ -206,4 +209,54 @@ func Agree(c *gin.Context) {
 	}
 	resp.SuccessResponseWithMsg(c, "success")
 	return
+}
+
+// GetApplyList 获取用户好友申请列表
+//
+//	@Summary	获取用户好友申请列表
+//	@Success	200	{object}	resp.ResponseData	"成功"
+//	@Failure	500	{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/contact/getApplyList [get]
+func GetApplyList(c *gin.Context) {
+
+	ctx := context.Background()
+
+	uid := c.GetInt64("uid")
+
+	ua := query.UserApply
+	// 获取 UserApply 表中 TargetID 等于 uid(登录用户ID)的用户ID集合
+	// select uid form user_apply where target_id = ?
+	userApplyIDs, err := ua.WithContext(ctx).Select(ua.UID).Where(ua.TargetID.Eq(uid)).Find()
+	if err != nil {
+		// todo 添加日志系统
+		log.Printf("DB excete Sql happen [ERROR], err msg is : %v", err)
+		resp.ErrorResponse(c, "系统繁忙，亲稍后再试")
+		return
+	}
+
+	var uids = make([]int64, 0)
+	var n int
+	n = len(userApplyIDs)
+	for i := 0; i < n; i++ {
+		uids = append(uids, userApplyIDs[i].UID)
+	}
+
+	// 根据 uids 集合查询 User 表sex
+	// select id , name , avatar , sex , active_status , last_opt_time form user where status = 0 and id in (...)
+	u := query.User
+	users, err := u.WithContext(ctx).Select(u.ID, u.Name, u.Avatar, u.Sex, u.ActiveStatus, u.LastOptTime).Where(u.ID.In(uids...), u.Status.Eq(0)).Find()
+	if err != nil {
+		// todo 添加日志系统
+		log.Printf("DB excete Sql happen [ERROR], err msg is : %v", err)
+		resp.ErrorResponse(c, "系统繁忙，亲稍后再试")
+		c.Abort()
+		return
+	}
+
+	var usersVO = make([]vo.UserVo, 0)
+
+	// 数据转换
+	_ = copier.Copy(&usersVO, &users)
+
+	resp.SuccessResponse(c, usersVO)
 }
