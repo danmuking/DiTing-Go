@@ -5,7 +5,7 @@ import (
 	"log"
 )
 
-func init() {
+func InitConfig() {
 	// 设置配置文件的名字
 	viper.SetConfigName("config")
 	// 设置配置文件的类型

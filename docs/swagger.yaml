@@ -13,6 +13,54 @@ definitions:
 info:
   contact: {}
 paths:
+  /api/contact/add:
+    post:
+      parameters:
+      - description: 好友uid
+        in: body
+        name: uid
+        required: true
+        schema:
+          type: integer
+      - description: 验证消息
+        in: body
+        name: msg
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            $ref: '#/definitions/resp.ResponseData'
+        "500":
+          description: 内部错误
+          schema:
+            $ref: '#/definitions/resp.ResponseData'
+      summary: 添加好友
+  /api/contact/delete:
+    delete:
+      parameters:
+      - description: 好友uid
+        in: body
+        name: uid
+        required: true
+        schema:
+          type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            $ref: '#/definitions/resp.ResponseData'
+        "500":
+          description: 内部错误
+          schema:
+            $ref: '#/definitions/resp.ResponseData'
+      summary: 删除好友
   /api/public/login:
     post:
       parameters:

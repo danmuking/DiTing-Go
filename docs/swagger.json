@@ -4,6 +4,81 @@
         "contact": {}
     },
     "paths": {
+        "/api/contact/add": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "添加好友",
+                "parameters": [
+                    {
+                        "description": "好友uid",
+                        "name": "uid",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "验证消息",
+                        "name": "msg",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "$ref": "#/definitions/resp.ResponseData"
+                        }
+                    },
+                    "500": {
+                        "description": "内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/resp.ResponseData"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/contact/delete": {
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "删除好友",
+                "parameters": [
+                    {
+                        "description": "好友uid",
+                        "name": "uid",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "$ref": "#/definitions/resp.ResponseData"
+                        }
+                    },
+                    "500": {
+                        "description": "内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/resp.ResponseData"
+                        }
+                    }
+                }
+            }
+        },
         "/api/public/login": {
             "post": {
                 "produces": [

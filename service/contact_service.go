@@ -23,10 +23,10 @@ func init() {
 //
 //	@Summary	添加好友
 //	@Produce	json
-//	@Param		uid		body		int				true	"好友uid"
-//	@Param		msg		body		string				true	"验证消息"
-//	@Success	200			{object}	resp.ResponseData	"成功"
-//	@Failure	500			{object}	resp.ResponseData	"内部错误"
+//	@Param		uid	body		int					true	"好友uid"
+//	@Param		msg	body		string				true	"验证消息"
+//	@Success	200	{object}	resp.ResponseData	"成功"
+//	@Failure	500	{object}	resp.ResponseData	"内部错误"
 //	@Router		/api/contact/add [post]
 func ApplyFriend(c *gin.Context) {
 	uid := c.GetInt64("uid")
@@ -69,35 +69,9 @@ func ApplyFriend(c *gin.Context) {
 		return
 	}
 	if apply != nil {
-		// 同意好友请求
-		apply.Status = 2
-		_, err := query.UserApply.WithContext(context.Background()).Where(query.UserApply.UID.Eq(friendUid), query.UserApply.TargetID.Eq(uid)).Updates(apply)
-		if err != nil {
-			resp.ErrorResponse(c, "参数错误")
-			c.Abort()
-			return
-		}
-		// 添加好友关系
-		var userFriends = []*model.UserFriend{
-			{
-				UID:       uid,
-				FriendUID: friendUid,
-			},
-			{
-				UID:       friendUid,
-				FriendUID: uid,
-			},
-		}
-		err = query.UserFriend.WithContext(context.Background()).Create(userFriends...)
-		if err != nil {
-			resp.ErrorResponse(c, "参数错误")
-			c.Abort()
-			return
-		}
-		resp.SuccessResponseWithMsg(c, "success")
-		return
+		Agree(c)
 	}
-	// 添加好友请求
+	// 发送好友请求
 	err = query.UserApply.WithContext(context.Background()).Create(&model.UserApply{
 		UID:        uid,
 		TargetID:   friendUid,
@@ -105,6 +79,7 @@ func ApplyFriend(c *gin.Context) {
 		Status:     enum.NO,
 		ReadStatus: enum.NO,
 	})
+	// TODO: 发送好友请求通知
 	if err != nil {
 		resp.ErrorResponse(c, "参数错误")
 		c.Abort()
@@ -117,9 +92,9 @@ func ApplyFriend(c *gin.Context) {
 //
 //	@Summary	删除好友
 //	@Produce	json
-//	@Param		uid		body		int				true	"好友uid"
-//	@Success	200			{object}	resp.ResponseData	"成功"
-//	@Failure	500			{object}	resp.ResponseData	"内部错误"
+//	@Param		uid	body		int					true	"好友uid"
+//	@Success	200	{object}	resp.ResponseData	"成功"
+//	@Failure	500	{object}	resp.ResponseData	"内部错误"
 //	@Router		/api/contact/delete [delete]
 func DeleteFriend(c *gin.Context) {
 	uid := c.GetInt64("uid")
@@ -170,4 +145,65 @@ func isFriend(c *gin.Context, uid, friendUid int64) bool {
 		return false
 	}
 	return true
+}
+
+// Agree 同意好友申请
+//
+//	@Summary	同意好友申请
+//	@Produce	json
+//	@Param		uid	body		int					true	"好友uid"
+//	@Success	200	{object}	resp.ResponseData	"成功"
+//	@Failure	500	{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/contact/delete [put]
+func Agree(c *gin.Context) {
+	uid := c.GetInt64("uid")
+	friend := model.Uid{}
+	if err := c.ShouldBind(&friend); err != nil { //ShouldBind()会自动推导
+		resp.ErrorResponse(c, "参数错误")
+		return
+	}
+	friendUid := friend.Uid
+	// 检查是否存在好友申请
+	userApply := query.UserApply
+	apply, err := userApply.WithContext(context.Background()).Where(userApply.UID.Eq(friendUid), userApply.TargetID.Eq(uid)).First()
+	if err != nil && err.Error() != "record not found" {
+		resp.ErrorResponse(c, "参数错误")
+		c.Abort()
+	}
+	if apply == nil {
+		resp.ErrorResponse(c, "好友申请不存在")
+		c.Abort()
+		return
+	}
+
+	// 同意好友请求
+	apply.Status = enum.YES
+	// 事务
+	err = q.Transaction(func(tx *query.Query) error {
+		// 更新好友申请状态
+		if _, err := tx.UserApply.WithContext(context.Background()).Where(userApply.UID.Eq(friendUid), userApply.TargetID.Eq(uid)).Updates(apply); err != nil {
+			return err
+		}
+		var userFriends = []*model.UserFriend{
+			{
+				UID:       uid,
+				FriendUID: friendUid,
+			},
+			{
+				UID:       friendUid,
+				FriendUID: uid,
+			},
+		}
+		if err := tx.UserFriend.WithContext(context.Background()).Create(userFriends...); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		resp.ErrorResponse(c, "参数错误")
+		c.Abort()
+		return
+	}
+	resp.SuccessResponseWithMsg(c, "success")
+	return
 }
