@@ -19,12 +19,12 @@ type PageResp struct {
 }
 
 // Paginate 是通用的游标分页函数
-func Paginate(db *gorm.DB, params PageReq, result interface{}, cursorFieldName string, isAsc bool, conditions ...interface{}) (*PageResp, error) {
+func Paginate(db *gorm.DB, params PageReq, result interface{}, cursorFieldName string, isAsc bool, conditions ...string) (*PageResp, error) {
 	var resp PageResp
 
 	query := db
 	if len(conditions) > 0 {
-		query = query.Where(conditions[0], conditions[1:]...)
+		query = query.Where(conditions[0], conditions[1:])
 	}
 
 	if params.Cursor != nil {
