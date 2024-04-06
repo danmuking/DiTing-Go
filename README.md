@@ -40,6 +40,13 @@
             <br />
             <sub><b>LinYi</b></sub>
         </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/quan-CN">
+            <img src="https://avatars.githubusercontent.com/u/161594079?v=4" width="100;" alt="quan-CN"/>
+            <br />
+            <sub><b>Quan</b></sub>
+        </a>
     </td></tr>
 </table>
 <!-- readme: collaborators,contributors -end -->
