@@ -5,6 +5,7 @@ import (
 	"DiTing-Go/dal/model"
 	"DiTing-Go/dal/query"
 	"DiTing-Go/models/vo"
+	cursorUtils "DiTing-Go/pkg/cursor"
 	"DiTing-Go/pkg/enum"
 	"DiTing-Go/pkg/resp"
 	"context"
@@ -243,32 +244,30 @@ func GetApplyList(c *gin.Context) {
 	uid := c.GetInt64("uid")
 	var n int
 
-	ua := query.UserApply
 	u := query.User
 
 	var uids = make([]int64, 0)
 	var usersVO = make([]vo.UserVo, 0)
 
 	// 默认值
-	var lastID int64 = 0
-	var limit int = 20
-
-	lastIDStr := c.Query("last_id")
-	limitStr := c.Query("limit")
-
-	// 游标是否为空
-	if lastIDStr != "" {
-		lastID, _ = strconv.ParseInt(lastIDStr, 10, 64)
+	var cursor *string = nil
+	var pageSize int = 20
+	//pageSize, _ = strconv.Atoi(c.Query("page_size"))
+	pageRequest := cursorUtils.PageReq{
+		Cursor:   cursor,
+		PageSize: pageSize,
 	}
-
-	// limit 是否为空
-	if limitStr != "" {
-		limit, _ = strconv.Atoi(limitStr)
+	if err := c.ShouldBindQuery(&pageRequest); err != nil { //ShouldBind()会自动推导
+		resp.ErrorResponse(c, "参数错误")
+		return
 	}
 
 	// 获取 UserApply 表中 TargetID 等于 uid(登录用户ID)的用户ID集合
-	// select uid form user_apply where target_id = ?
-	userApplyIDs, err := ua.WithContext(ctx).Select(ua.UID).Where(ua.TargetID.Eq(uid)).Find()
+	// select * form user_apply where target_id = ?
+	db := dal.DB
+	userApplys := make([]model.UserApply, 0)
+	condition := []string{"target_id=?", strconv.FormatInt(uid, 10)}
+	pageResp, err := cursorUtils.Paginate(db, pageRequest, &userApplys, "create_time", false, condition...)
 	if err != nil {
 		// todo 添加日志系统
 		log.Printf("DB excete Sql happen [ERROR], err msg is : %v", err)
@@ -276,14 +275,14 @@ func GetApplyList(c *gin.Context) {
 		return
 	}
 
-	n = len(userApplyIDs)
+	n = len(userApplys)
 	for i := 0; i < n; i++ {
-		uids = append(uids, userApplyIDs[i].UID)
+		uids = append(uids, userApplys[i].UID)
 	}
 
 	// 根据 uids 集合查询 User 表，基于游标分页查询，游标id为前端传来的 last_id（某页数据最后一条记录的id）
 	// select id , name , avatar , sex , active_status , last_opt_time form user where status = 0 and id in (...) and id > last_Id limit 20
-	users, err := u.WithContext(ctx).Select(u.ID, u.Name, u.Avatar, u.Sex, u.ActiveStatus, u.LastOptTime).Where(u.ID.In(uids...), u.Status.Eq(0), u.ID.Gt(lastID)).Limit(limit).Find()
+	users, err := u.WithContext(ctx).Select(u.ID, u.Name, u.Avatar, u.Sex, u.ActiveStatus, u.LastOptTime).Where(u.ID.In(uids...), u.Status.Eq(0)).Find()
 	if err != nil {
 		// todo 添加日志系统
 		log.Printf("DB excete Sql happen [ERROR], err msg is : %v", err)
@@ -293,11 +292,9 @@ func GetApplyList(c *gin.Context) {
 
 	// 数据转换
 	_ = copier.Copy(&usersVO, &users)
+	pageResp.Data = usersVO
 
-	resp.SuccessResponse(c, vo.PageListResponse{
-		List:  usersVO,
-		Total: len(usersVO),
-	})
+	resp.SuccessResponse(c, pageResp)
 }
 
 // UnreadApplyNum 好友申请未读数量

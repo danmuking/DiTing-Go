@@ -9,13 +9,13 @@ import (
 )
 
 type PageReq struct {
-	Cursor   *string
-	PageSize int
+	Cursor   *string `json:"cursor" form:"cursor"`
+	PageSize int     `json:"page_size" form:"page_size"`
 }
 type PageResp struct {
-	Cursor *string
-	IsLast bool
-	Data   any
+	Cursor *string `json:"cursor" form:"cursor"`
+	IsLast bool    `json:"is_last" form:"is_last"`
+	Data   any     `json:"data" form:"data"`
 }
 
 // Paginate 是通用的游标分页函数
@@ -29,7 +29,7 @@ func Paginate(db *gorm.DB, params PageReq, result interface{}, cursorFieldName s
 	}
 
 	if params.Cursor != nil {
-		query = query.Where(fmt.Sprintf("%s >= ?", cursorFieldName), *params.Cursor)
+		query = query.Where(fmt.Sprintf("%s > ?", cursorFieldName), *params.Cursor)
 	}
 
 	if isAsc {
