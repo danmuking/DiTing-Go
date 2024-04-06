@@ -116,7 +116,7 @@ func initGin() {
 		//同意好友申请
 		apiContact.PUT("/agree", service.Agree)
 		//获取好友列表
-		apiContact.GET("/getContactList", service.Login)
+		apiContact.GET("/getContactList", service.GetContactList)
 		//判断是否是好友
 		apiContact.GET("/isFriend/:friendUid", service.IsFriend)
 		//好友申请未读数量

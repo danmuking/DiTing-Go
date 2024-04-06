@@ -320,3 +320,31 @@ func UnreadApplyNum(c *gin.Context) {
 	}
 	resp.SuccessResponse(c, num)
 }
+
+// GetContactList 获取好友列表
+//
+//	@Summary	获取好友列表
+//	@Produce	json
+//	@Param		uid	query		int					true	"用户ID"
+//	@Success	200	{object}	resp.ResponseData	"成功"
+//	@Failure	500	{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/contact/getContactList [get]
+func GetContactList(c *gin.Context) {
+	ctx := context.Background()
+	uid := c.GetInt64("uid")
+	// 获取传递的uid参数
+	//uid, _ := strconv.ParseInt(c.Query("uid"), 10, 64)
+	// 获取好友列表
+	userFriend := query.UserFriend
+	// 获取 UserFriend 表中 uid = uid 的好友组成的集合
+	// select friend_uid from user_friend where uid = ?
+	// TODO 优化查询 1.查询好友表，获取好友ID 2.查询用户表，获取好友信息
+	friendIDs, err := userFriend.WithContext(ctx).Select(userFriend.FriendUID).Where(userFriend.UID.Eq(uid)).Find()
+	if err != nil {
+		resp.ErrorResponse(c, "出现错误，未能获取联系人列表")
+		return
+	}
+	// 返回获取的好友列表
+	resp.SuccessResponse(c, friendIDs)
+	return
+}
