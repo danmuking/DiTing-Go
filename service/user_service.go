@@ -77,7 +77,7 @@ func Login(c *gin.Context) {
 		resp.ErrorResponse(c, "用户名或密码错误")
 		return
 	}
-	// 生成jwt
+	//生成jwt
 	token, _ := utils.GenerateToken(user.ID)
 	resp.SuccessResponse(c, token)
 }
