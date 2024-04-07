@@ -297,6 +297,7 @@ func GetApplyList(c *gin.Context) {
 	for i := 0; i < len(users); i++ {
 		var userVO resp2.UserApplyResp
 		_ = copier.Copy(&userVO, &users[i])
+		userVO.Msg = userApplys[i].Msg
 		userVO.Status = userApplys[i].Status
 		usersVO = append(usersVO, userVO)
 	}
