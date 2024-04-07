@@ -1,6 +1,6 @@
-package vo
+package resp
 
-type PageListResponse struct {
+type PageListResp struct {
 	List  interface{} `json:"dataList"`
 	Total int         `json:"total"`
 }

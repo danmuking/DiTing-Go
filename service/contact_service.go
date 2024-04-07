@@ -4,7 +4,8 @@ import (
 	"DiTing-Go/dal"
 	"DiTing-Go/dal/model"
 	"DiTing-Go/dal/query"
-	"DiTing-Go/models/vo"
+	"DiTing-Go/domain/vo/req"
+	resp2 "DiTing-Go/domain/vo/resp"
 	cursorUtils "DiTing-Go/pkg/cursor"
 	"DiTing-Go/pkg/enum"
 	"DiTing-Go/pkg/resp"
@@ -35,12 +36,12 @@ func init() {
 //	@Router		/api/contact/add [post]
 func ApplyFriend(c *gin.Context) {
 	uid := c.GetInt64("uid")
-	applyDto := model.UserApplyDto{}
-	if err := c.ShouldBind(&applyDto); err != nil { //ShouldBind()会自动推导
+	applyReq := req.UserApplyReq{}
+	if err := c.ShouldBind(&applyReq); err != nil { //ShouldBind()会自动推导
 		resp.ErrorResponse(c, "参数错误")
 		return
 	}
-	friendUid := applyDto.Uid
+	friendUid := applyReq.Uid
 	//检查用户是否存在
 	user, err := query.User.WithContext(context.Background()).Where(query.User.ID.Eq(friendUid)).First()
 	if user == nil {
@@ -80,7 +81,7 @@ func ApplyFriend(c *gin.Context) {
 	err = query.UserApply.WithContext(context.Background()).Create(&model.UserApply{
 		UID:        uid,
 		TargetID:   friendUid,
-		Msg:        applyDto.Msg,
+		Msg:        applyReq.Msg,
 		Status:     enum.NO,
 		ReadStatus: enum.NO,
 	})
@@ -103,7 +104,7 @@ func ApplyFriend(c *gin.Context) {
 //	@Router		/api/contact/delete [delete]
 func DeleteFriend(c *gin.Context) {
 	uid := c.GetInt64("uid")
-	friend := model.Uid{}
+	friend := req.UidReq{}
 	if err := c.ShouldBind(&friend); err != nil { //ShouldBind()会自动推导
 		resp.ErrorResponse(c, "参数错误")
 		return
@@ -176,7 +177,7 @@ func isFriend(c *gin.Context, uid, friendUid int64) bool {
 //	@Router		/api/contact/delete [put]
 func Agree(c *gin.Context) {
 	uid := c.GetInt64("uid")
-	friend := model.Uid{}
+	friend := req.UidReq{}
 	if err := c.ShouldBind(&friend); err != nil { //ShouldBind()会自动推导
 		resp.ErrorResponse(c, "参数错误")
 		return
@@ -247,7 +248,7 @@ func GetApplyList(c *gin.Context) {
 	u := query.User
 
 	var uids = make([]int64, 0)
-	var usersVO = make([]vo.UserVo, 0)
+	var usersVO = make([]resp2.UserApplyResp, 0)
 
 	// 默认值
 	var cursor *string = nil
@@ -262,8 +263,7 @@ func GetApplyList(c *gin.Context) {
 		return
 	}
 
-	// 获取 UserApply 表中 TargetID 等于 uid(登录用户ID)的用户ID集合
-	// select * form user_apply where target_id = ?
+	// 获取 UserApply 表中 TargetID 等于 uid(登录用户ID)的用户ID集合，采用游标分页
 	db := dal.DB
 	userApplys := make([]model.UserApply, 0)
 	condition := []string{"target_id=?", strconv.FormatInt(uid, 10)}
@@ -280,9 +280,8 @@ func GetApplyList(c *gin.Context) {
 		uids = append(uids, userApplys[i].UID)
 	}
 
-	// 根据 uids 集合查询 User 表，基于游标分页查询，游标id为前端传来的 last_id（某页数据最后一条记录的id）
-	// select id , name , avatar , sex , active_status , last_opt_time form user where status = 0 and id in (...) and id > last_Id limit 20
-	users, err := u.WithContext(ctx).Select(u.ID, u.Name, u.Avatar, u.Sex, u.ActiveStatus, u.LastOptTime).Where(u.ID.In(uids...), u.Status.Eq(0)).Find()
+	// 根据 uids 集合查询 User 表
+	users, err := u.WithContext(ctx).Select(u.ID, u.Name, u.Avatar).Where(u.ID.In(uids...)).Find()
 	if err != nil {
 		// todo 添加日志系统
 		log.Printf("DB excete Sql happen [ERROR], err msg is : %v", err)
@@ -290,8 +289,17 @@ func GetApplyList(c *gin.Context) {
 		return
 	}
 
+	if len(users) != len(userApplys) {
+		log.Printf("DB excete Sql happen [ERROR], err msg is : %v", err)
+		resp.ErrorResponse(c, "系统繁忙，亲稍后再试")
+	}
 	// 数据转换
-	_ = copier.Copy(&usersVO, &users)
+	for i := 0; i < len(users); i++ {
+		var userVO resp2.UserApplyResp
+		_ = copier.Copy(&userVO, &users[i])
+		userVO.Status = userApplys[i].Status
+		usersVO = append(usersVO, userVO)
+	}
 	pageResp.Data = usersVO
 
 	resp.SuccessResponse(c, pageResp)

@@ -1,4 +1,4 @@
-package models
+package domain
 
 // 初始化处理中心，以便调用
 var Users = &Hub{
