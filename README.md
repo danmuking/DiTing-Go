@@ -42,6 +42,13 @@
         </a>
     </td>
     <td align="center">
+        <a href="https://github.com/Soce1lo">
+            <img src="https://avatars.githubusercontent.com/u/53263452?v=4" width="100;" alt="Soce1lo"/>
+            <br />
+            <sub><b>Soce1lo</b></sub>
+        </a>
+    </td>
+    <td align="center">
         <a href="https://github.com/quan-CN">
             <img src="https://avatars.githubusercontent.com/u/161594079?v=4" width="100;" alt="quan-CN"/>
             <br />
