@@ -2,79 +2,15 @@ package routes
 
 import (
 	_ "DiTing-Go/docs"
-	"DiTing-Go/domain"
 	"DiTing-Go/pkg/middleware/jwt"
 	"DiTing-Go/service"
-	"fmt"
+	websocketService "DiTing-Go/websocket/service"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"log"
 	"net/http"
 )
-
-// 定义一个升级器，将普通的http连接升级为websocket连接
-var upgrader = &websocket.Upgrader{
-	//定义读写缓冲区大小
-	WriteBufferSize: 1024,
-	ReadBufferSize:  1024,
-	//校验请求
-	CheckOrigin: func(r *http.Request) bool {
-		//如果不是get请求，返回错误
-		if r.Method != "GET" {
-			fmt.Println("请求方式错误")
-			return false
-		}
-		//还可以根据其他需求定制校验规则
-		return true
-	},
-}
-
-// 处理websocket请求
-func socketHandler(w http.ResponseWriter, r *http.Request) {
-	// Upgrade our raw HTTP connection to a websocket based one
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Print("Error during connection upgradation:", err)
-		return
-	}
-	defer conn.Close()
-
-	//连接成功后注册用户
-	user := &domain.User{
-		Conn: conn,
-		Msg:  make(chan []byte),
-	}
-	domain.Users.Register <- user
-	//得到连接后，就可以开始读写数据了
-	go read(user)
-	write(user)
-}
-
-func read(user *domain.User) {
-
-	//从连接中循环读取信息
-	for {
-		_, msg, err := user.Conn.ReadMessage()
-		if err != nil {
-			fmt.Println("用户退出:", user.Conn.RemoteAddr().String())
-			domain.Users.Unregister <- user
-			break
-		}
-		//将读取到的信息传入websocket处理器中的broadcast中，
-		domain.Users.Broadcast <- msg
-	}
-}
-func write(user *domain.User) {
-	for data := range user.Msg {
-		err := user.Conn.WriteMessage(1, data)
-		if err != nil {
-			fmt.Println("写入错误")
-			break
-		}
-	}
-}
 
 // InitRouter 初始化路由
 func InitRouter() {
@@ -84,8 +20,7 @@ func InitRouter() {
 
 // 初始化websocket
 func initWebSocket() {
-	go domain.Users.Run()
-	http.HandleFunc("/socket", socketHandler)
+	http.HandleFunc("/socket", websocketService.Connect)
 	log.Fatal(http.ListenAndServe("localhost:8080", nil))
 }
 
