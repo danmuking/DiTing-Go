@@ -2,7 +2,7 @@ package routes
 
 import (
 	_ "DiTing-Go/docs"
-	"DiTing-Go/models"
+	"DiTing-Go/domain"
 	"DiTing-Go/pkg/middleware/jwt"
 	"DiTing-Go/service"
 	"fmt"
@@ -42,31 +42,31 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	//连接成功后注册用户
-	user := &models.User{
+	user := &domain.User{
 		Conn: conn,
 		Msg:  make(chan []byte),
 	}
-	models.Users.Register <- user
+	domain.Users.Register <- user
 	//得到连接后，就可以开始读写数据了
 	go read(user)
 	write(user)
 }
 
-func read(user *models.User) {
+func read(user *domain.User) {
 
 	//从连接中循环读取信息
 	for {
 		_, msg, err := user.Conn.ReadMessage()
 		if err != nil {
 			fmt.Println("用户退出:", user.Conn.RemoteAddr().String())
-			models.Users.Unregister <- user
+			domain.Users.Unregister <- user
 			break
 		}
 		//将读取到的信息传入websocket处理器中的broadcast中，
-		models.Users.Broadcast <- msg
+		domain.Users.Broadcast <- msg
 	}
 }
-func write(user *models.User) {
+func write(user *domain.User) {
 	for data := range user.Msg {
 		err := user.Conn.WriteMessage(1, data)
 		if err != nil {
@@ -84,7 +84,7 @@ func InitRouter() {
 
 // 初始化websocket
 func initWebSocket() {
-	go models.Users.Run()
+	go domain.Users.Run()
 	http.HandleFunc("/socket", socketHandler)
 	log.Fatal(http.ListenAndServe("localhost:8080", nil))
 }
