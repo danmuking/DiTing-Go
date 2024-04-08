@@ -3,7 +3,9 @@ package routes
 import (
 	_ "DiTing-Go/docs"
 	"DiTing-Go/pkg/middleware/jwt"
+	"DiTing-Go/pkg/resp"
 	"DiTing-Go/service"
+	"DiTing-Go/websocket/global"
 	websocketService "DiTing-Go/websocket/service"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -56,10 +58,20 @@ func initGin() {
 		apiContact.GET("/isFriend/:friendUid", service.IsFriend)
 		//好友申请未读数量
 		apiContact.GET("/unreadApplyNum", service.UnreadApplyNum)
+		// TODO:测试使用
+		apiContact.GET("/test", test)
 	}
 
 	err := router.Run(":5000")
 	if err != nil {
 		return
 	}
+}
+
+// TODO:测试使用
+func test(c *gin.Context) {
+	msg := new(global.Msg)
+	msg.Uid = 20017
+	websocketService.Send(msg)
+	resp.SuccessResponse(c, nil)
 }

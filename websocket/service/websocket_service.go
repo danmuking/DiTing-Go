@@ -1,6 +1,7 @@
 package service
 
 import (
+	"DiTing-Go/domain/enum"
 	"DiTing-Go/pkg/utils"
 	"DiTing-Go/websocket/global"
 	"fmt"
@@ -58,16 +59,17 @@ func Connect(w http.ResponseWriter, r *http.Request) {
 		Uid:     *uid,
 		Channel: conn,
 	}
-	global.UserChannelMap.SetIfAbsent(stringUid, userChannel)
-	userChannel, _ = global.UserChannelMap.Get(stringUid)
+	fmt.Println(user)
+	global.UserChannelMap.Set(stringUid, &userChannel)
+	userChannelPtr, _ := global.UserChannelMap.Get(stringUid)
 	// TODO:加锁方式是否正确
 	// 将连接加入到用户的channel中
-	userChannel.Mu.Lock()
-	userChannel.ChannelList = append(userChannel.ChannelList, conn)
-	userChannel.Mu.Unlock()
-
+	userChannelPtr.Mu.Lock()
+	userChannelPtr.ChannelList = append(userChannelPtr.ChannelList, conn)
+	userChannelPtr.Mu.Unlock()
 	// 定时发送心跳消息
-	go heatBeat(&user)
+	// TODO:开发时关闭
+	//go heatBeat(&user)
 }
 
 // Send 发送空消息代表有新消息，前端收到消息后再去后端拉取消息
@@ -76,8 +78,8 @@ func Send(msg *global.Msg) {
 	stringUid := strconv.FormatInt(uid, 10)
 	channels, _ := global.UserChannelMap.Get(stringUid)
 	for _, conn := range channels.ChannelList {
-		// TODO: 消息类型抽象成枚举
-		err := conn.WriteMessage(2, []byte(""))
+		// 发送空消息，代表有新消息
+		err := conn.WriteMessage(enum.NEW_MESSAGE, []byte("111"))
 		if err != nil {
 			fmt.Println("写入错误")
 			break
@@ -141,7 +143,6 @@ func heatBeat(user *global.User) {
 			conn.SetReadDeadline(time.Now().Add(10 * time.Second))
 			_, _, err = conn.ReadMessage()
 			if err != nil {
-				// TODO:下线操作
 				disConnect(user)
 				log.Println("heartbeat response error:", err)
 				return

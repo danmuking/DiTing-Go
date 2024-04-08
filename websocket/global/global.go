@@ -20,4 +20,4 @@ type Msg struct {
 }
 
 // UserChannelMap 用户和channel的映射
-var UserChannelMap = cmap.New[Channels]()
+var UserChannelMap = cmap.New[*Channels]()
