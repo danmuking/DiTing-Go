@@ -17,6 +17,7 @@ import (
 
 var (
 	Q           = new(Query)
+	Contact     *contact
 	GroupMember *groupMember
 	Message     *message
 	Room        *room
@@ -29,6 +30,7 @@ var (
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
+	Contact = &Q.Contact
 	GroupMember = &Q.GroupMember
 	Message = &Q.Message
 	Room = &Q.Room
@@ -42,6 +44,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:          db,
+		Contact:     newContact(db, opts...),
 		GroupMember: newGroupMember(db, opts...),
 		Message:     newMessage(db, opts...),
 		Room:        newRoom(db, opts...),
@@ -56,6 +59,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 type Query struct {
 	db *gorm.DB
 
+	Contact     contact
 	GroupMember groupMember
 	Message     message
 	Room        room
@@ -71,6 +75,7 @@ func (q *Query) Available() bool { return q.db != nil }
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:          db,
+		Contact:     q.Contact.clone(db),
 		GroupMember: q.GroupMember.clone(db),
 		Message:     q.Message.clone(db),
 		Room:        q.Room.clone(db),
@@ -93,6 +98,7 @@ func (q *Query) WriteDB() *Query {
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:          db,
+		Contact:     q.Contact.replaceDB(db),
 		GroupMember: q.GroupMember.replaceDB(db),
 		Message:     q.Message.replaceDB(db),
 		Room:        q.Room.replaceDB(db),
@@ -105,6 +111,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 }
 
 type queryCtx struct {
+	Contact     IContactDo
 	GroupMember IGroupMemberDo
 	Message     IMessageDo
 	Room        IRoomDo
@@ -117,6 +124,7 @@ type queryCtx struct {
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
+		Contact:     q.Contact.WithContext(ctx),
 		GroupMember: q.GroupMember.WithContext(ctx),
 		Message:     q.Message.WithContext(ctx),
 		Room:        q.Room.WithContext(ctx),

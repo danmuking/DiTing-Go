@@ -15,6 +15,7 @@ import (
 	"time"
 )
 
+// TODO:连接断开处理
 // 定义一个升级器，将普通的http连接升级为websocket连接
 var upgrader = &websocket.Upgrader{
 	//定义读写缓冲区大小
@@ -72,6 +73,7 @@ func Connect(w http.ResponseWriter, r *http.Request) {
 	//go heatBeat(&user)
 }
 
+// TODO: Send会被调用两次？
 // Send 发送空消息代表有新消息，前端收到消息后再去后端拉取消息
 func Send(msg *global.Msg) {
 	uid := msg.Uid

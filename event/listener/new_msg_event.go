@@ -8,7 +8,8 @@ import (
 )
 
 func init() {
-	err := global.Bus.SubscribeAsync("NewMsgEvent", NewMsgEvent, false)
+	//err := global.Bus.SubscribeAsync("NewMsgEvent", NewMsgEvent, false)
+	err := global.Bus.Subscribe("NewMsgEvent", NewMsgEvent)
 	if err != nil {
 		log.Fatalln("订阅事件失败", err.Error())
 	}

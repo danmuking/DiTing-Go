@@ -2,9 +2,9 @@ package global
 
 import (
 	"DiTing-Go/dal"
+	"DiTing-Go/dal/query"
 	"fmt"
 	"github.com/spf13/viper"
-	"gorm.io/gen/examples/dal/query"
 )
 
 var MySQLDSN string

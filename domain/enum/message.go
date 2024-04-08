@@ -3,5 +3,5 @@ package enum
 import "github.com/gorilla/websocket"
 
 const (
-	NEW_MESSAGE = websocket.BinaryMessage
+	NEW_MESSAGE = websocket.TextMessage
 )

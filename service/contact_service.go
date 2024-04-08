@@ -99,6 +99,8 @@ func ApplyFriend(c *gin.Context) {
 		ReadStatus: enum.NO,
 	})
 	resp.SuccessResponseWithMsg(c, "success")
+	c.Abort()
+	return
 }
 
 // DeleteFriend 删除好友

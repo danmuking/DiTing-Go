@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "DiTing-Go/event/listener"
 	"DiTing-Go/routes"
 )
 
