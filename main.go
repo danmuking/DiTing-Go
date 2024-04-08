@@ -9,5 +9,6 @@ import (
 // @in header
 // @name Authorization
 func main() {
+	//global.InitDB()
 	routes.InitRouter()
 }

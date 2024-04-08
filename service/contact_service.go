@@ -6,24 +6,21 @@ import (
 	"DiTing-Go/dal/query"
 	"DiTing-Go/domain/vo/req"
 	resp2 "DiTing-Go/domain/vo/resp"
+	"DiTing-Go/global"
 	cursorUtils "DiTing-Go/pkg/cursor"
 	"DiTing-Go/pkg/enum"
 	"DiTing-Go/pkg/resp"
+	"bytes"
 	"context"
 	"github.com/gin-gonic/gin"
+	"github.com/goccy/go-json"
 	"github.com/jinzhu/copier"
+	"io"
 	"log"
 	"strconv"
 )
 
-var q *query.Query
-
-func init() {
-	dal.DB = dal.ConnectDB(MySQLDSN).Debug()
-	// 设置默认DB对象
-	query.SetDefault(dal.DB)
-	q = query.Use(dal.DB)
-}
+var q *query.Query = global.Query
 
 // ApplyFriend 添加好友
 //
@@ -37,10 +34,13 @@ func init() {
 func ApplyFriend(c *gin.Context) {
 	uid := c.GetInt64("uid")
 	applyReq := req.UserApplyReq{}
-	if err := c.ShouldBind(&applyReq); err != nil { //ShouldBind()会自动推导
+	data, err := c.GetRawData()
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(data))
+	if err != nil { //ShouldBind()会自动推导
 		resp.ErrorResponse(c, "参数错误")
 		return
 	}
+	json.Unmarshal(data, &applyReq)
 	friendUid := applyReq.Uid
 	//检查用户是否存在
 	user, err := query.User.WithContext(context.Background()).Where(query.User.ID.Eq(friendUid)).First()
@@ -85,12 +85,19 @@ func ApplyFriend(c *gin.Context) {
 		Status:     enum.NO,
 		ReadStatus: enum.NO,
 	})
-	// TODO: 发送好友请求通知
 	if err != nil {
 		resp.ErrorResponse(c, "参数错误")
 		c.Abort()
 		return
 	}
+	// 发送好友申请事件
+	global.Bus.Publish("FriendApplyEvent", model.UserApply{
+		UID:        uid,
+		TargetID:   friendUid,
+		Msg:        applyReq.Msg,
+		Status:     enum.NO,
+		ReadStatus: enum.NO,
+	})
 	resp.SuccessResponseWithMsg(c, "success")
 }
 
@@ -180,6 +187,7 @@ func Agree(c *gin.Context) {
 	friend := req.UidReq{}
 	if err := c.ShouldBind(&friend); err != nil { //ShouldBind()会自动推导
 		resp.ErrorResponse(c, "参数错误")
+		c.Abort()
 		return
 	}
 	friendUid := friend.Uid
@@ -199,32 +207,36 @@ func Agree(c *gin.Context) {
 	// 同意好友请求
 	apply.Status = enum.YES
 	// 事务
-	err = q.Transaction(func(tx *query.Query) error {
-		// 更新好友申请状态
-		if _, err := tx.UserApply.WithContext(context.Background()).Where(userApply.UID.Eq(friendUid), userApply.TargetID.Eq(uid)).Updates(apply); err != nil {
-			return err
-		}
-		var userFriends = []*model.UserFriend{
-			{
-				UID:       uid,
-				FriendUID: friendUid,
-			},
-			{
-				UID:       friendUid,
-				FriendUID: uid,
-			},
-		}
-		if err := tx.UserFriend.WithContext(context.Background()).Create(userFriends...); err != nil {
-			return err
-		}
-		return nil
-	})
+	tx := q.Begin()
+	if _, err = tx.UserApply.WithContext(context.Background()).Where(userApply.UID.Eq(friendUid), userApply.TargetID.Eq(uid)).Updates(apply); err != nil {
+		tx.Rollback()
+	}
+	var userFriends = []*model.UserFriend{
+		{
+			UID:       uid,
+			FriendUID: friendUid,
+		},
+		{
+			UID:       friendUid,
+			FriendUID: uid,
+		},
+	}
+	if err = tx.UserFriend.WithContext(context.Background()).Create(userFriends...); err != nil {
+		tx.Rollback()
+	}
 	if err != nil {
 		resp.ErrorResponse(c, "参数错误")
 		c.Abort()
 		return
 	}
+	tx.Commit()
+	// 发送新好友事件
+	global.Bus.Publish("FriendNewEvent", model.UserFriend{
+		UID:       uid,
+		FriendUID: friendUid,
+	})
 	resp.SuccessResponseWithMsg(c, "success")
+	c.Abort()
 	return
 }
 

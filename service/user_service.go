@@ -1,26 +1,14 @@
 package service
 
 import (
-	"DiTing-Go/dal"
 	"DiTing-Go/dal/model"
 	"DiTing-Go/dal/query"
 	"DiTing-Go/pkg/resp"
 	_ "DiTing-Go/pkg/setting"
 	"DiTing-Go/pkg/utils"
 	"context"
-	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
 )
-
-var MySQLDSN = fmt.Sprintf("%s:%s@tcp(%s:%s)/diting?charset=utf8mb4&parseTime=True", viper.GetString("mysql.username"), viper.GetString("mysql.password"), viper.GetString("mysql.host"), viper.GetString("mysql.port"))
-
-func init() {
-	//println("MySQLDSN: ", MySQLDSN)
-	dal.DB = dal.ConnectDB(MySQLDSN).Debug()
-	// 设置默认DB对象
-	query.SetDefault(dal.DB)
-}
 
 // Register 用户注册
 //
