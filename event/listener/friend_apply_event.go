@@ -2,6 +2,7 @@ package listener
 
 import (
 	"DiTing-Go/dal/model"
+	"DiTing-Go/domain/enum"
 	"DiTing-Go/global"
 	global2 "DiTing-Go/websocket/global"
 	"DiTing-Go/websocket/service"
@@ -9,13 +10,9 @@ import (
 )
 
 func init() {
-	//if err := global.Bus.SubscribeAsync("FriendApplyEvent", FriendApplyEvent, false); err != nil {
-	if err := global.Bus.Subscribe("main:FriendApplyEvent", FriendApplyEvent); err != nil {
+	if err := global.Bus.SubscribeAsync(enum.FriendApplyEvent, FriendApplyEvent, false); err != nil {
 		log.Fatalln("订阅事件失败", err.Error())
 	}
-	//if err := global.Bus.Subscribe("test", test); err != nil {
-	//	log.Fatalln("订阅事件失败", err.Error())
-	//}
 }
 
 // FriendApplyEvent 好友申请事件

@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	err := global.Bus.SubscribeAsync("FriendApplyEvent", FriendApplyEvent, false)
+	err := global.Bus.SubscribeAsync(enum.FriendNewEvent, FriendNewEvent, false)
 	if err != nil {
 		log.Fatalln("订阅事件失败", err.Error())
 	}
@@ -29,6 +29,7 @@ func FriendNewEvent(friend model.UserFriend) {
 	room := model.Room{
 		Type:    enum.GROUP,
 		HotFlag: enum.NORMAL,
+		ExtJSON: "{}",
 	}
 	tx := q.Begin()
 	roomQ := tx.WithContext(ctx).Room

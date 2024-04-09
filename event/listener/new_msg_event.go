@@ -1,6 +1,7 @@
 package listener
 
 import (
+	"DiTing-Go/domain/enum"
 	"DiTing-Go/global"
 	global2 "DiTing-Go/websocket/global"
 	"DiTing-Go/websocket/service"
@@ -8,8 +9,7 @@ import (
 )
 
 func init() {
-	//err := global.Bus.SubscribeAsync("NewMsgEvent", NewMsgEvent, false)
-	err := global.Bus.Subscribe("NewMsgEvent", NewMsgEvent)
+	err := global.Bus.SubscribeAsync(enum.NewMessageEvent, NewMsgEvent, false)
 	if err != nil {
 		log.Fatalln("订阅事件失败", err.Error())
 	}

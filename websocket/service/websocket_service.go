@@ -43,6 +43,8 @@ func Connect(w http.ResponseWriter, r *http.Request) {
 	}
 	// Upgrade our raw HTTP connection to a websocket based one
 	conn, err := upgrader.Upgrade(w, r, nil)
+	// 关闭连接
+	defer conn.Close()
 	if err != nil {
 		log.Print("Error during connection upgradation:", err)
 		return
@@ -60,7 +62,6 @@ func Connect(w http.ResponseWriter, r *http.Request) {
 		Uid:     *uid,
 		Channel: conn,
 	}
-	fmt.Println(user)
 	global.UserChannelMap.Set(stringUid, &userChannel)
 	userChannelPtr, _ := global.UserChannelMap.Get(stringUid)
 	// TODO:加锁方式是否正确
@@ -69,16 +70,26 @@ func Connect(w http.ResponseWriter, r *http.Request) {
 	userChannelPtr.ChannelList = append(userChannelPtr.ChannelList, conn)
 	userChannelPtr.Mu.Unlock()
 	// 定时发送心跳消息
-	// TODO:开发时关闭
-	//go heatBeat(&user)
+	go heatBeat(&user)
+	// 监听连接关闭事件
+	for {
+		_, _, err := conn.ReadMessage()
+		if err != nil {
+			disConnect(&user)
+			break
+		}
+	}
 }
 
-// TODO: Send会被调用两次？
 // Send 发送空消息代表有新消息，前端收到消息后再去后端拉取消息
 func Send(msg *global.Msg) {
 	uid := msg.Uid
 	stringUid := strconv.FormatInt(uid, 10)
 	channels, _ := global.UserChannelMap.Get(stringUid)
+	// 用户不在线，直接返回
+	if channels == nil {
+		return
+	}
 	for _, conn := range channels.ChannelList {
 		// 发送空消息，代表有新消息
 		err := conn.WriteMessage(enum.NEW_MESSAGE, []byte("111"))
@@ -142,7 +153,9 @@ func heatBeat(user *global.User) {
 				log.Println(err)
 				return
 			}
-			conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+			// TODO:开发时关闭
+			//conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+			conn.SetReadDeadline(time.Now().Add(24 * 360 * time.Hour))
 			_, _, err = conn.ReadMessage()
 			if err != nil {
 				disConnect(user)

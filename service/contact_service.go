@@ -4,6 +4,7 @@ import (
 	"DiTing-Go/dal"
 	"DiTing-Go/dal/model"
 	"DiTing-Go/dal/query"
+	domainEnum "DiTing-Go/domain/enum"
 	"DiTing-Go/domain/vo/req"
 	resp2 "DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
@@ -76,6 +77,7 @@ func ApplyFriend(c *gin.Context) {
 	}
 	if apply != nil {
 		Agree(c)
+		return
 	}
 	// 发送好友请求
 	err = query.UserApply.WithContext(context.Background()).Create(&model.UserApply{
@@ -91,8 +93,7 @@ func ApplyFriend(c *gin.Context) {
 		return
 	}
 	// 发送好友申请事件
-	// TODO:怀疑是名称和函数名相同会导致被触发两次
-	global.Bus.Publish("main:FriendApplyEvent", model.UserApply{
+	global.Bus.Publish(domainEnum.FriendApplyEvent, model.UserApply{
 		UID:        uid,
 		TargetID:   friendUid,
 		Msg:        applyReq.Msg,
@@ -234,7 +235,7 @@ func Agree(c *gin.Context) {
 	}
 	tx.Commit()
 	// 发送新好友事件
-	global.Bus.Publish("FriendNewEvent", model.UserFriend{
+	global.Bus.Publish(domainEnum.FriendNewEvent, model.UserFriend{
 		UID:       uid,
 		FriendUID: friendUid,
 	})
