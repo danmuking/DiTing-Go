@@ -59,7 +59,18 @@ func FriendNewEvent(friend model.UserFriend) {
 		log.Fatalln("创建房间失败", err.Error())
 		return
 	}
-	//TODO 自动发送一条消息
+	//TODO 抽取为方法
+	newMsg := model.Message{
+		RoomID:  room.ID,
+		FromUID: friend.UID,
+		Content: "你们已经是好友了，开始聊天吧",
+		// TODO: 抽取为常量
+		Status: 0,
+		Type:   1,
+		Extra:  "{}",
+	}
+	msgQ := q.WithContext(ctx).Message
+	msgQ.Create(&newMsg)
 
 	// 发送新消息事件
 	global.Bus.Publish("NewMsgEvent", msg)
