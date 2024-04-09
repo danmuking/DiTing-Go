@@ -62,6 +62,12 @@ func initGin() {
 		apiContact.GET("/test", test)
 	}
 
+	apiMsg := router.Group("/api/msg")
+	apiMsg.Use(jwt.JWT())
+	{
+		apiMsg.POST("textMsg", service.SendTextMsgService)
+	}
+
 	err := router.Run(":5000")
 	if err != nil {
 		return
@@ -72,6 +78,6 @@ func initGin() {
 func test(c *gin.Context) {
 	msg := new(global.Msg)
 	msg.Uid = 20017
-	websocketService.Send(msg)
+	websocketService.Send(msg.Uid)
 	resp.SuccessResponse(c, nil)
 }

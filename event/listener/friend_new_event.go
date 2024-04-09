@@ -5,7 +5,6 @@ import (
 	"DiTing-Go/domain/enum"
 	"DiTing-Go/global"
 	"DiTing-Go/pkg/utils"
-	global2 "DiTing-Go/websocket/global"
 	"context"
 	"log"
 	"sort"
@@ -23,11 +22,8 @@ func init() {
 func FriendNewEvent(friend model.UserFriend) {
 	ctx := context.Background()
 	q := global.Query
-	msg := global2.Msg{
-		Uid: friend.FriendUID,
-	}
 	room := model.Room{
-		Type:    enum.GROUP,
+		Type:    enum.PERSONAL,
 		HotFlag: enum.NORMAL,
 		ExtJSON: "{}",
 	}
@@ -59,19 +55,15 @@ func FriendNewEvent(friend model.UserFriend) {
 		log.Fatalln("创建房间失败", err.Error())
 		return
 	}
-	//TODO 抽取为方法
 	newMsg := model.Message{
 		RoomID:  room.ID,
 		FromUID: friend.UID,
 		Content: "你们已经是好友了，开始聊天吧",
 		// TODO: 抽取为常量
 		Status: 0,
-		Type:   1,
+		Type:   enum.TextMessage,
 		Extra:  "{}",
 	}
-	msgQ := q.WithContext(ctx).Message
-	msgQ.Create(&newMsg)
-
 	// 发送新消息事件
-	global.Bus.Publish("NewMsgEvent", msg)
+	global.Bus.Publish("NewMsgEvent", newMsg)
 }

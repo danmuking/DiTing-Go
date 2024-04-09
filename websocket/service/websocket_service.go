@@ -82,8 +82,7 @@ func Connect(w http.ResponseWriter, r *http.Request) {
 }
 
 // Send 发送空消息代表有新消息，前端收到消息后再去后端拉取消息
-func Send(msg *global.Msg) {
-	uid := msg.Uid
+func Send(uid int64) {
 	stringUid := strconv.FormatInt(uid, 10)
 	channels, _ := global.UserChannelMap.Get(stringUid)
 	// 用户不在线，直接返回
@@ -92,7 +91,7 @@ func Send(msg *global.Msg) {
 	}
 	for _, conn := range channels.ChannelList {
 		// 发送空消息，代表有新消息
-		err := conn.WriteMessage(enum.NEW_MESSAGE, []byte("111"))
+		err := conn.WriteMessage(enum.NewMessage, []byte("111"))
 		if err != nil {
 			fmt.Println("写入错误")
 			break

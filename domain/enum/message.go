@@ -3,5 +3,6 @@ package enum
 import "github.com/gorilla/websocket"
 
 const (
-	NEW_MESSAGE = websocket.TextMessage
+	NewMessage  = websocket.TextMessage
+	TextMessage = 1
 )
