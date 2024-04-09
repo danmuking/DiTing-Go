@@ -91,7 +91,8 @@ func ApplyFriend(c *gin.Context) {
 		return
 	}
 	// 发送好友申请事件
-	global.Bus.Publish("FriendApplyEvent", model.UserApply{
+	// TODO:怀疑是名称和函数名相同会导致被触发两次
+	global.Bus.Publish("main:FriendApplyEvent", model.UserApply{
 		UID:        uid,
 		TargetID:   friendUid,
 		Msg:        applyReq.Msg,
