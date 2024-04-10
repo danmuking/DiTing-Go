@@ -187,17 +187,21 @@ func isFriend(c *gin.Context, uid, friendUid int64) bool {
 //	@Failure	500	{object}	resp.ResponseData	"内部错误"
 //	@Router		/api/contact/delete [put]
 func Agree(c *gin.Context) {
+	ctx := context.Background()
+	userApply := query.UserApply
+	userApplyQ := userApply.WithContext(ctx)
 	uid := c.GetInt64("uid")
+
 	friend := req.UidReq{}
 	if err := c.ShouldBind(&friend); err != nil { //ShouldBind()会自动推导
 		resp.ErrorResponse(c, "参数错误")
 		c.Abort()
 		return
 	}
+
 	friendUid := friend.Uid
-	// 检查是否存在好友申请
-	userApply := query.UserApply
-	apply, err := userApply.WithContext(context.Background()).Where(userApply.UID.Eq(friendUid), userApply.TargetID.Eq(uid)).First()
+	// 检查是否存在好友申请且状态为待审批
+	apply, err := userApplyQ.Where(userApply.UID.Eq(friendUid), userApply.TargetID.Eq(uid), userApply.Status.Eq(enum.NO)).First()
 	if err != nil && err.Error() != "record not found" {
 		resp.ErrorResponse(c, "参数错误")
 		c.Abort()
@@ -212,8 +216,15 @@ func Agree(c *gin.Context) {
 	apply.Status = enum.YES
 	// 事务
 	tx := q.Begin()
-	if _, err = tx.UserApply.WithContext(context.Background()).Where(userApply.UID.Eq(friendUid), userApply.TargetID.Eq(uid)).Updates(apply); err != nil {
-		tx.Rollback()
+	userApplyTx := tx.UserApply.WithContext(context.Background())
+	userFriendTx := tx.UserFriend.WithContext(context.Background())
+	if _, err = userApplyTx.Where(userApply.UID.Eq(friendUid), userApply.TargetID.Eq(uid)).Updates(apply); err != nil {
+		if err := tx.Rollback(); err != nil {
+			log.Fatalln("事务回滚失败", err.Error())
+		}
+		resp.ErrorResponse(c, "系统正忙请稍后再试~")
+		c.Abort()
+		return
 	}
 	var userFriends = []*model.UserFriend{
 		{
@@ -225,15 +236,20 @@ func Agree(c *gin.Context) {
 			FriendUID: uid,
 		},
 	}
-	if err = tx.UserFriend.WithContext(context.Background()).Create(userFriends...); err != nil {
-		tx.Rollback()
-	}
-	if err != nil {
-		resp.ErrorResponse(c, "参数错误")
+	if err = userFriendTx.Create(userFriends...); err != nil {
+		if err := tx.Rollback(); err != nil {
+			log.Fatalln("事务回滚失败", err.Error())
+		}
+		resp.ErrorResponse(c, "系统正忙请稍后再试~")
 		c.Abort()
 		return
 	}
-	tx.Commit()
+	if err := tx.Commit(); err != nil {
+		resp.ErrorResponse(c, "系统正忙请稍后再试~")
+		c.Abort()
+		log.Fatalln("事务提交失败", err.Error())
+		return
+	}
 	// 发送新好友事件
 	global.Bus.Publish(domainEnum.FriendNewEvent, model.UserFriend{
 		UID:       uid,
