@@ -5,14 +5,16 @@ import (
 	"DiTing-Go/domain/enum"
 	"DiTing-Go/global"
 	"DiTing-Go/pkg/utils"
+	"DiTing-Go/service"
 	"context"
 	"log"
 	"sort"
 	"strconv"
+	"time"
 )
 
 func init() {
-	err := global.Bus.SubscribeAsync(enum.FriendNewEvent, FriendNewEvent, false)
+	err := global.Bus.SubscribeAsync(enum.FriendNewEvent, FriendNewEvent, true)
 	if err != nil {
 		log.Fatalln("订阅事件失败", err.Error())
 	}
@@ -20,41 +22,50 @@ func init() {
 
 // FriendNewEvent 新好友事件
 func FriendNewEvent(friend model.UserFriend) {
+	//println(FriendNewEvent)
 	ctx := context.Background()
 	q := global.Query
+	tx := q.Begin()
+	roomQ := tx.WithContext(ctx).Room
+	roomFriendQ := tx.WithContext(ctx).RoomFriend
+	contactQ := tx.WithContext(ctx).Contact
+
 	room := model.Room{
 		Type:    enum.PERSONAL,
 		HotFlag: enum.NORMAL,
 		ExtJSON: "{}",
 	}
-	tx := q.Begin()
-	roomQ := tx.WithContext(ctx).Room
+
 	// 创建房间表
-	err := roomQ.Create(&room)
-	if err != nil {
+	if err := roomQ.Create(&room); err != nil {
+		if err := tx.Rollback(); err != nil {
+			log.Fatalln("事务回滚失败", err.Error())
+			return
+		}
 		log.Fatalln("创建房间失败", err.Error())
-		tx.Rollback()
+		return
 	}
+	// 排序，uid小的在前
 	uids := utils.Int64Slice{friend.UID, friend.FriendUID}
 	sort.Sort(uids)
-	roomFriendQ := tx.WithContext(ctx).RoomFriend
+
+	// 创建私聊表
 	roomFriend := model.RoomFriend{
 		RoomID:  room.ID,
 		Uid1:    uids[0],
 		Uid2:    uids[1],
 		RoomKey: strconv.FormatInt(uids[0], 10) + "," + strconv.FormatInt(uids[1], 10),
 	}
-	// 创建私聊表
-	err = roomFriendQ.Create(&roomFriend)
-	if err != nil {
-		log.Fatalln("创建房间失败", err.Error())
-		tx.Rollback()
-	}
-	err = tx.Commit()
-	if err != nil {
+	if err := roomFriendQ.Create(&roomFriend); err != nil {
+		if err := tx.Rollback(); err != nil {
+			log.Fatalln("事务回滚失败", err.Error())
+			return
+		}
 		log.Fatalln("创建房间失败", err.Error())
 		return
 	}
+
+	// 自动发送一条消息
 	newMsg := model.Message{
 		RoomID:  room.ID,
 		FromUID: friend.UID,
@@ -63,6 +74,48 @@ func FriendNewEvent(friend model.UserFriend) {
 		Status: 0,
 		Type:   enum.TextMessage,
 		Extra:  "{}",
+	}
+	if err := service.SendTextMsg(&newMsg); err != nil {
+		log.Fatalln("发送消息失败", err.Error())
+		return
+	}
+
+	//创建会话表
+	s, _ := time.ParseDuration("-1s")
+	if err := contactQ.Create(&model.Contact{
+		UID:        friend.UID,
+		RoomID:     room.ID,
+		LastMsgID:  newMsg.ID,
+		ReadTime:   time.Now(),
+		ActiveTime: time.Now(),
+	}); err != nil {
+		if err := tx.Rollback(); err != nil {
+			log.Fatalln("事务回滚失败", err.Error())
+			return
+		}
+		log.Fatalln("创建会话失败", err.Error())
+		return
+	}
+	if err := contactQ.Create(&model.Contact{
+		UID:       friend.FriendUID,
+		RoomID:    room.ID,
+		LastMsgID: newMsg.ID,
+		// 读到时间设为1秒前
+		ReadTime:   time.Now().Add(s),
+		ActiveTime: time.Now(),
+	}); err != nil {
+		if err := tx.Rollback(); err != nil {
+			log.Fatalln("事务回滚失败", err.Error())
+			return
+		}
+		log.Fatalln("创建会话失败", err.Error())
+		return
+	}
+
+	// 提交
+	if err := tx.Commit(); err != nil {
+		log.Fatalln("事务提交失败", err.Error())
+		return
 	}
 	// 发送新消息事件
 	global.Bus.Publish("NewMsgEvent", newMsg)

@@ -19,8 +19,6 @@ func init() {
 
 // NewMsgEvent 新消息事件
 func NewMsgEvent(msg model.Message) {
-	//TODO:修改会话表
-
 	// 向房间中的所有用户发送消息，包括自己
 	roomQ := global.Query.WithContext(context.Background()).Room
 	room, _ := roomQ.Where(query.Room.ID.Eq(msg.RoomID)).First()

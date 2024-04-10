@@ -15,6 +15,7 @@ import (
 
 // SendTextMsgService 发送文本消息
 func SendTextMsgService(c *gin.Context) {
+	// TODO：封装dto 状态不需要前端传递参数
 	uid := c.GetInt64("uid")
 	msg := model.Message{}
 	data, err := c.GetRawData()
@@ -37,7 +38,7 @@ func SendTextMsgService(c *gin.Context) {
 	}
 
 	// 发送消息
-	if err := SendTextMsg(msg); err != nil {
+	if err := SendTextMsg(&msg); err != nil {
 		resp.ErrorResponse(c, "消息发送失败")
 		c.Abort()
 		return
@@ -52,10 +53,10 @@ func SendTextMsgService(c *gin.Context) {
 	return
 }
 
-func SendTextMsg(msg model.Message) error {
+func SendTextMsg(msg *model.Message) error {
 	ctx := context.Background()
 	msgQ := global.Query.WithContext(ctx).Message
-	if err := msgQ.Create(&msg); err != nil {
+	if err := msgQ.Create(msg); err != nil {
 		log.Fatalln("消息发送失败", err.Error())
 		return err
 	}
