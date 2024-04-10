@@ -41,25 +41,31 @@ func initGin() {
 		apiPublic.POST("/login", service.Login)
 	}
 
+	apiUser := router.Group("/api/user")
+	apiUser.Use(jwt.JWT())
+	{
+		//添加好友
+		apiUser.POST("/add", service.ApplyFriend)
+		//删除好友
+		apiUser.DELETE("/delete", service.DeleteFriend)
+		//获取好友申请列表
+		apiUser.GET("/getApplyList", service.GetApplyList)
+		//同意好友申请
+		apiUser.PUT("/agree", service.Agree)
+		//获取好友列表
+		apiUser.GET("/getFriendList", service.GetFriendList)
+		//判断是否是好友
+		apiUser.GET("/isFriend/:friendUid", service.IsFriend)
+		//好友申请未读数量
+		apiUser.GET("/unreadApplyNum", service.UnreadApplyNum)
+		// TODO:测试使用
+		apiUser.GET("/test", test)
+	}
+
 	apiContact := router.Group("/api/contact")
 	apiContact.Use(jwt.JWT())
 	{
-		//添加好友
-		apiContact.POST("/add", service.ApplyFriend)
-		//删除好友
-		apiContact.DELETE("/delete", service.DeleteFriend)
-		//获取好友申请列表
-		apiContact.GET("/getApplyList", service.GetApplyList)
-		//同意好友申请
-		apiContact.PUT("/agree", service.Agree)
-		//获取好友列表
-		apiContact.GET("/getContactList", service.GetContactList)
-		//判断是否是好友
-		apiContact.GET("/isFriend/:friendUid", service.IsFriend)
-		//好友申请未读数量
-		apiContact.GET("/unreadApplyNum", service.UnreadApplyNum)
-		// TODO:测试使用
-		apiContact.GET("/test", test)
+		apiContact.GET("getContactList", service.GetContactListService)
 	}
 
 	apiMsg := router.Group("/api/msg")

@@ -23,6 +23,8 @@ import (
 	"strconv"
 )
 
+var q *query.Query = global.Query
+
 // Register 用户注册
 //
 //	@Summary	用户注册
@@ -82,8 +84,6 @@ func Login(c *gin.Context) {
 	token, _ := utils.GenerateToken(user.ID)
 	resp.SuccessResponse(c, token)
 }
-
-var q *query.Query = global.Query
 
 // ApplyFriend 添加好友
 //
@@ -424,14 +424,14 @@ func UnreadApplyNum(c *gin.Context) {
 	resp.SuccessResponse(c, num)
 }
 
-// GetContactList 获取好友列表
+// GetFriendList 获取好友列表
 //
 //	@Summary	获取好友列表
 //	@Produce	json
 //	@Success	200	{object}	resp.ResponseData	"成功"
 //	@Failure	500	{object}	resp.ResponseData	"内部错误"
 //	@Router		/api/contact/getContactList [get]
-func GetContactList(c *gin.Context) {
+func GetFriendList(c *gin.Context) {
 	ctx := context.Background()
 	uid := c.GetInt64("uid")
 	// 获取好友列表
