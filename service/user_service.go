@@ -360,7 +360,7 @@ func GetApplyList(c *gin.Context) {
 	// 获取 UserApply 表中 TargetID 等于 uid(登录用户ID)的用户ID集合，采用游标分页
 	db := dal.DB
 	userApplys := make([]model.UserApply, 0)
-	condition := []string{"target_id=?", strconv.FormatInt(uid, 10)}
+	condition := []interface{}{"target_id=?", strconv.FormatInt(uid, 10)}
 	pageResp, err := cursorUtils.Paginate(db, pageRequest, &userApplys, "create_time", false, condition...)
 	if err != nil {
 		// todo 添加日志系统

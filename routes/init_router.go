@@ -66,6 +66,7 @@ func initGin() {
 	apiContact.Use(jwt.JWT())
 	{
 		apiContact.GET("getContactList", service.GetContactListService)
+		apiContact.GET("getContactDetail", service.GetContactDetailService)
 	}
 
 	apiMsg := router.Group("/api/msg")

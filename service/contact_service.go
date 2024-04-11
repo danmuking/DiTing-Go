@@ -5,6 +5,7 @@ import (
 	"DiTing-Go/dal/model"
 	"DiTing-Go/domain/dto"
 	"DiTing-Go/domain/enum"
+	domainResp "DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
 	cursorUtils "DiTing-Go/pkg/cursor"
 	"DiTing-Go/pkg/resp"
@@ -43,7 +44,7 @@ func GetContactListService(c *gin.Context) {
 func GetContactList(uid int64, pageRequest cursorUtils.PageReq) (*cursorUtils.PageResp, error) {
 	db := dal.DB
 	contact := make([]model.Contact, 0)
-	condition := []string{"uid=?", strconv.FormatInt(uid, 10)}
+	condition := []interface{}{"uid=?", strconv.FormatInt(uid, 10)}
 	pageResp, err := cursorUtils.Paginate(db, pageRequest, &contact, "active_time", false, condition...)
 	if err != nil {
 		log.Printf("查询会话列表失败: %s", err.Error())
@@ -112,4 +113,89 @@ func getContactDto(contact model.Contact) (*dto.ContactDto, error) {
 	// TODO: 返回消息未读数
 	// TODO: 群聊
 	return contactDto, nil
+}
+
+func GetContactDetailService(c *gin.Context) {
+
+	roomIdString, _ := c.GetQuery("room_id")
+	roomId, _ := strconv.ParseInt(roomIdString, 10, 64)
+	//TODO:参数校验
+	// 游标翻页
+	// 默认值
+	var cursor *string = nil
+	var pageSize int = 20
+	pageRequest := cursorUtils.PageReq{
+		Cursor:   cursor,
+		PageSize: pageSize,
+	}
+	if err := c.ShouldBindQuery(&pageRequest); err != nil { //ShouldBind()会自动推导
+		resp.ErrorResponse(c, "参数错误")
+		c.Abort()
+		return
+	}
+	pageResp, err := GetContactDetail(roomId, pageRequest)
+	if err != nil {
+		resp.ErrorResponse(c, "系统正忙，请稍后再试")
+		c.Abort()
+		return
+	}
+	resp.SuccessResponse(c, pageResp)
+	c.Abort()
+	return
+}
+
+func GetContactDetail(roomID int64, pageRequest cursorUtils.PageReq) (*cursorUtils.PageResp, error) {
+	// 查询消息
+	db := dal.DB
+	msgs := make([]model.Message, 0)
+	// TODO: 抽象成常量
+	condition := []interface{}{"room_id=? AND status=?", strconv.FormatInt(roomID, 10), "0"}
+	pageResp, err := cursorUtils.Paginate(db, pageRequest, &msgs, "create_time", false, condition...)
+	if err != nil {
+		log.Printf("查询消息失败: %s", err.Error())
+		return nil, err
+	}
+	msgList := pageResp.Data.(*[]model.Message)
+	userIdMap := make(map[int64]*int64)
+	for _, msg := range *msgList {
+		if userIdMap[msg.FromUID] == nil {
+			userIdMap[msg.FromUID] = &msg.FromUID
+		}
+	}
+	// 转换成列表
+	userIdList := make([]int64, 0)
+	for _, uid := range userIdMap {
+		userIdList = append(userIdList, *uid)
+	}
+	// 查询用户信息
+	ctx := context.Background()
+	user := global.Query.User
+	userQ := user.WithContext(ctx)
+	users, err := userQ.Where(user.ID.In(userIdList...)).Find()
+	if err != nil {
+		log.Printf("查询用户失败: %s", err.Error())
+		return nil, err
+	}
+	userMap := make(map[int64]*model.User)
+	for _, user := range users {
+		userMap[user.ID] = user
+	}
+
+	// 拼装结果
+	msgRespList := make([]domainResp.MessageResp, 0)
+	for _, msg := range *msgList {
+		msgResp := domainResp.MessageResp{
+			ID:         msg.ID,
+			Content:    msg.Content,
+			ReplyMsgID: msg.ReplyMsgID,
+			GapCount:   msg.GapCount,
+			Type:       msg.Type,
+			CreateTime: msg.CreateTime,
+			UserName:   userMap[msg.FromUID].Name,
+			UserAvatar: userMap[msg.FromUID].Avatar,
+		}
+		msgRespList = append(msgRespList, msgResp)
+	}
+	pageResp.Data = msgRespList
+	return pageResp, nil
 }
