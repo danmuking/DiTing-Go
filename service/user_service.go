@@ -20,6 +20,7 @@ import (
 	"github.com/jinzhu/copier"
 	"io"
 	"log"
+	"sort"
 	"strconv"
 )
 
@@ -167,7 +168,7 @@ func ApplyFriend(c *gin.Context) {
 	return
 }
 
-// DeleteFriend 删除好友
+// DeleteFriendService 删除好友
 //
 //	@Summary	删除好友
 //	@Produce	json
@@ -175,7 +176,7 @@ func ApplyFriend(c *gin.Context) {
 //	@Success	200	{object}	resp.ResponseData	"成功"
 //	@Failure	500	{object}	resp.ResponseData	"内部错误"
 //	@Router		/api/contact/delete [delete]
-func DeleteFriend(c *gin.Context) {
+func DeleteFriendService(c *gin.Context) {
 	uid := c.GetInt64("uid")
 	friend := req.UidReq{}
 	if err := c.ShouldBind(&friend); err != nil { //ShouldBind()会自动推导
@@ -185,25 +186,113 @@ func DeleteFriend(c *gin.Context) {
 	friendUid := friend.Uid
 	// 检查是否为好友
 	if isFriend := isFriend(c, uid, friendUid); isFriend {
+		tx := global.Query.Begin()
+		userFriend := global.Query.UserFriend
+		userFriendTx := tx.UserFriend.WithContext(context.Background())
+		userApply := global.Query.UserApply
+		userApplyTx := tx.UserApply.WithContext(context.Background())
+		// TODO: 抽取为异步事件
 		// 事务
-		err := q.Transaction(func(tx *query.Query) error {
-			// 删除好友关系
-			if _, err := tx.UserFriend.WithContext(context.Background()).Where(query.UserFriend.UID.Eq(uid), query.UserFriend.FriendUID.Eq(friendUid)).Delete(); err != nil {
-				return err
+		// 删除好友关系
+		if _, err := userFriendTx.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(friendUid)).Delete(); err != nil {
+			if err := tx.Rollback(); err != nil {
+				log.Println("事务回滚失败", err.Error())
+				return
 			}
-			if _, err := tx.UserFriend.WithContext(context.Background()).Where(query.UserFriend.UID.Eq(friendUid), query.UserFriend.FriendUID.Eq(uid)).Delete(); err != nil {
-				return err
+			resp.ErrorResponse(c, "删除失败")
+			c.Abort()
+			log.Println("删除好友失败", err.Error())
+			return
+		}
+		if _, err := userFriendTx.Where(userFriend.UID.Eq(friendUid), userFriend.FriendUID.Eq(uid)).Delete(); err != nil {
+			if err := tx.Rollback(); err != nil {
+				log.Println("事务回滚失败", err.Error())
+				return
 			}
-			// 删除好友申请
-			if _, err := tx.UserApply.WithContext(context.Background()).Where(query.UserApply.UID.Eq(uid), query.UserApply.TargetID.Eq(friendUid)).Delete(); err != nil {
-				return err
+			resp.ErrorResponse(c, "删除失败")
+			c.Abort()
+			log.Println("删除好友失败", err.Error())
+			return
+		}
+		// 删除好友申请
+		if _, err := userApplyTx.Where(userApply.UID.Eq(uid), userApply.TargetID.Eq(friendUid)).Delete(); err != nil {
+			if err := tx.Rollback(); err != nil {
+				log.Println("事务回滚失败", err.Error())
+				return
 			}
-			if _, err := tx.UserApply.WithContext(context.Background()).Where(query.UserApply.UID.Eq(friendUid), query.UserApply.TargetID.Eq(uid)).Delete(); err != nil {
-				return err
+			resp.ErrorResponse(c, "删除失败")
+			c.Abort()
+			log.Println("删除好友失败", err.Error())
+			return
+		}
+		if _, err := userApplyTx.Where(userApply.UID.Eq(friendUid), userApply.TargetID.Eq(uid)).Delete(); err != nil {
+			if err := tx.Rollback(); err != nil {
+				log.Println("事务回滚失败", err.Error())
+				return
 			}
-			return nil
-		})
+			resp.ErrorResponse(c, "删除失败")
+			c.Abort()
+			log.Println("删除好友失败", err.Error())
+			return
+		}
+
+		// 删除好友房间
+		roomFriend := global.Query.RoomFriend
+		roomFriendTx := tx.RoomFriend.WithContext(context.Background())
+		uids := utils.Int64Slice{uid, friendUid}
+		sort.Sort(uids)
+		roomFriendR, err := roomFriendTx.Where(roomFriend.Uid1.Eq(uids[0]), roomFriend.Uid2.Eq(uids[1])).First()
 		if err != nil {
+			if err := tx.Rollback(); err != nil {
+				log.Println("事务回滚失败", err.Error())
+				return
+			}
+			resp.ErrorResponse(c, "删除失败")
+			c.Abort()
+			log.Println("查询好友房间失败", err.Error())
+			return
+		}
+		if _, err := roomFriendTx.Where(roomFriend.ID.Eq(roomFriendR.ID)).Delete(); err != nil {
+			if err := tx.Rollback(); err != nil {
+				log.Println("事务回滚失败", err.Error())
+				return
+			}
+			resp.ErrorResponse(c, "删除失败")
+			c.Abort()
+			log.Println("删除好友房间失败", err.Error())
+			return
+		}
+
+		// 删除房间表
+		room := global.Query.Room
+		roomTx := tx.Room.WithContext(context.Background())
+		if _, err := roomTx.Where(room.ID.Eq(roomFriendR.RoomID)).Delete(); err != nil {
+			if err := tx.Rollback(); err != nil {
+				log.Println("事务回滚失败", err.Error())
+				return
+			}
+			resp.ErrorResponse(c, "删除失败")
+			c.Abort()
+			log.Println("删除房间失败", err.Error())
+			return
+		}
+
+		msg := global.Query.Message
+		msgTx := tx.Message.WithContext(context.Background())
+		// 删除消息
+		if _, err := msgTx.Where(msg.RoomID.Eq(roomFriendR.RoomID)).Delete(); err != nil {
+			if err := tx.Rollback(); err != nil {
+				log.Println("事务回滚失败", err.Error())
+				return
+			}
+			resp.ErrorResponse(c, "删除失败")
+			c.Abort()
+			log.Println("删除消息失败", err.Error())
+			return
+		}
+
+		if err := tx.Commit(); err != nil {
+			log.Println("事务提交失败", err.Error())
 			resp.ErrorResponse(c, "删除失败")
 			c.Abort()
 			return
@@ -282,7 +371,7 @@ func Agree(c *gin.Context) {
 	userFriendTx := tx.UserFriend.WithContext(context.Background())
 	if _, err = userApplyTx.Where(userApply.UID.Eq(friendUid), userApply.TargetID.Eq(uid)).Updates(apply); err != nil {
 		if err := tx.Rollback(); err != nil {
-			log.Fatalln("事务回滚失败", err.Error())
+			log.Println("事务回滚失败", err.Error())
 		}
 		resp.ErrorResponse(c, "系统正忙请稍后再试~")
 		c.Abort()
@@ -300,7 +389,7 @@ func Agree(c *gin.Context) {
 	}
 	if err = userFriendTx.Create(userFriends...); err != nil {
 		if err := tx.Rollback(); err != nil {
-			log.Fatalln("事务回滚失败", err.Error())
+			log.Println("事务回滚失败", err.Error())
 		}
 		resp.ErrorResponse(c, "系统正忙请稍后再试~")
 		c.Abort()
@@ -309,7 +398,7 @@ func Agree(c *gin.Context) {
 	if err := tx.Commit(); err != nil {
 		resp.ErrorResponse(c, "系统正忙请稍后再试~")
 		c.Abort()
-		log.Fatalln("事务提交失败", err.Error())
+		log.Println("事务提交失败", err.Error())
 		return
 	}
 	// 发送新好友事件

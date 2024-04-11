@@ -28,7 +28,7 @@ func SendTextMsgService(c *gin.Context) {
 	if err := json.Unmarshal(data, &msg); err != nil {
 		resp.ErrorResponse(c, "参数错误")
 		c.Abort()
-		log.Fatalln("参数错误", err.Error())
+		log.Println("参数错误", err.Error())
 		return
 	}
 	msg.Type = enum.TextMessage
@@ -57,7 +57,7 @@ func SendTextMsg(msg *model.Message) error {
 	ctx := context.Background()
 	msgQ := global.Query.WithContext(ctx).Message
 	if err := msgQ.Create(msg); err != nil {
-		log.Fatalln("消息发送失败", err.Error())
+		log.Println("消息发送失败", err.Error())
 		return err
 	}
 	return nil

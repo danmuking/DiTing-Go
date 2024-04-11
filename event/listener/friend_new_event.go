@@ -16,7 +16,7 @@ import (
 func init() {
 	err := global.Bus.SubscribeAsync(enum.FriendNewEvent, FriendNewEvent, true)
 	if err != nil {
-		log.Fatalln("订阅事件失败", err.Error())
+		log.Println("订阅事件失败", err.Error())
 	}
 }
 
@@ -39,10 +39,10 @@ func FriendNewEvent(friend model.UserFriend) {
 	// 创建房间表
 	if err := roomQ.Create(&room); err != nil {
 		if err := tx.Rollback(); err != nil {
-			log.Fatalln("事务回滚失败", err.Error())
+			log.Println("事务回滚失败", err.Error())
 			return
 		}
-		log.Fatalln("创建房间失败", err.Error())
+		log.Println("创建房间失败", err.Error())
 		return
 	}
 	// 排序，uid小的在前
@@ -58,10 +58,10 @@ func FriendNewEvent(friend model.UserFriend) {
 	}
 	if err := roomFriendQ.Create(&roomFriend); err != nil {
 		if err := tx.Rollback(); err != nil {
-			log.Fatalln("事务回滚失败", err.Error())
+			log.Println("事务回滚失败", err.Error())
 			return
 		}
-		log.Fatalln("创建房间失败", err.Error())
+		log.Println("创建房间失败", err.Error())
 		return
 	}
 
@@ -76,7 +76,7 @@ func FriendNewEvent(friend model.UserFriend) {
 		Extra:  "{}",
 	}
 	if err := service.SendTextMsg(&newMsg); err != nil {
-		log.Fatalln("发送消息失败", err.Error())
+		log.Println("发送消息失败", err.Error())
 		return
 	}
 
@@ -90,10 +90,10 @@ func FriendNewEvent(friend model.UserFriend) {
 		ActiveTime: time.Now(),
 	}); err != nil {
 		if err := tx.Rollback(); err != nil {
-			log.Fatalln("事务回滚失败", err.Error())
+			log.Println("事务回滚失败", err.Error())
 			return
 		}
-		log.Fatalln("创建会话失败", err.Error())
+		log.Println("创建会话失败", err.Error())
 		return
 	}
 	if err := contactQ.Create(&model.Contact{
@@ -105,16 +105,16 @@ func FriendNewEvent(friend model.UserFriend) {
 		ActiveTime: time.Now(),
 	}); err != nil {
 		if err := tx.Rollback(); err != nil {
-			log.Fatalln("事务回滚失败", err.Error())
+			log.Println("事务回滚失败", err.Error())
 			return
 		}
-		log.Fatalln("创建会话失败", err.Error())
+		log.Println("创建会话失败", err.Error())
 		return
 	}
 
 	// 提交
 	if err := tx.Commit(); err != nil {
-		log.Fatalln("事务提交失败", err.Error())
+		log.Println("事务提交失败", err.Error())
 		return
 	}
 	// 发送新消息事件

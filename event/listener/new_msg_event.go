@@ -13,7 +13,7 @@ import (
 func init() {
 	err := global.Bus.SubscribeAsync(enum.NewMessageEvent, NewMsgEvent, false)
 	if err != nil {
-		log.Fatalln("订阅事件失败", err.Error())
+		log.Println("订阅事件失败", err.Error())
 	}
 }
 
