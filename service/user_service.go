@@ -53,9 +53,11 @@ func Register(c *gin.Context) {
 	// 创建对象
 	err := u.WithContext(context.Background()).Omit(u.OpenID).Create(&user)
 	if err != nil {
-		resp.SuccessResponseWithMsg(c, "注册成功")
+		resp.ErrorResponse(c, "系统正忙请稍后再试~")
 		return
 	}
+	resp.SuccessResponseWithMsg(c, "注册成功")
+	return
 }
 
 // Login 用户登录
