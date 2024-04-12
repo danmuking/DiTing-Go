@@ -291,6 +291,20 @@ func DeleteFriendService(c *gin.Context) {
 			return
 		}
 
+		// 删除会话
+		contact := global.Query.Contact
+		contactTx := tx.Contact.WithContext(context.Background())
+		if _, err := contactTx.Where(contact.RoomID.Eq(roomFriendR.RoomID)).Delete(); err != nil {
+			if err := tx.Rollback(); err != nil {
+				log.Println("事务回滚失败", err.Error())
+				return
+			}
+			resp.ErrorResponse(c, "删除失败")
+			c.Abort()
+			log.Println("删除会话失败", err.Error())
+			return
+		}
+
 		if err := tx.Commit(); err != nil {
 			log.Println("事务提交失败", err.Error())
 			resp.ErrorResponse(c, "删除失败")
