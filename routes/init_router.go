@@ -2,7 +2,7 @@ package routes
 
 import (
 	_ "DiTing-Go/docs"
-	"DiTing-Go/pkg/middleware/jwt"
+	"DiTing-Go/pkg/middleware"
 	"DiTing-Go/pkg/resp"
 	"DiTing-Go/service"
 	"DiTing-Go/websocket/global"
@@ -29,7 +29,7 @@ func initWebSocket() {
 // 初始化gin
 func initGin() {
 	router := gin.Default()
-
+	router.Use(middleware.LoggerToFile())
 	//添加swagger访问路由
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	// 不需要身份验证的路由
@@ -42,7 +42,7 @@ func initGin() {
 	}
 
 	apiUser := router.Group("/api/user")
-	apiUser.Use(jwt.JWT())
+	apiUser.Use(middleware.JWT())
 	{
 		//添加好友
 		apiUser.POST("/add", service.ApplyFriend)
@@ -63,14 +63,14 @@ func initGin() {
 	}
 
 	apiContact := router.Group("/api/contact")
-	apiContact.Use(jwt.JWT())
+	apiContact.Use(middleware.JWT())
 	{
 		apiContact.GET("getContactList", service.GetContactListService)
 		apiContact.GET("getContactDetail", service.GetContactDetailService)
 	}
 
 	apiMsg := router.Group("/api/msg")
-	apiMsg.Use(jwt.JWT())
+	apiMsg.Use(middleware.JWT())
 	{
 		apiMsg.POST("textMsg", service.SendTextMsgService)
 	}

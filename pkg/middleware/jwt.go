@@ -1,4 +1,4 @@
-package jwt
+package middleware
 
 import (
 	"DiTing-Go/pkg/resp"
