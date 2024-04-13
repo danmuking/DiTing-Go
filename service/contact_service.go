@@ -5,6 +5,7 @@ import (
 	"DiTing-Go/dal/model"
 	"DiTing-Go/domain/dto"
 	"DiTing-Go/domain/enum"
+	domainModel "DiTing-Go/domain/model"
 	domainResp "DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
 	cursorUtils "DiTing-Go/pkg/cursor"
@@ -105,10 +106,11 @@ func getContactDto(contact model.Contact) (*dto.ContactDto, error) {
 		msg := global.Query.Message
 		msgQ := msg.WithContext(ctx)
 		msgR, err := msgQ.Where(msg.ID.Eq(contact.LastMsgID)).First()
+		message := domainModel.Message(*msgR)
 		if err != nil {
 			return nil, err
 		}
-		contactDto.LastMsg = msgR.Content
+		contactDto.LastMsg = message.GetContactMsg()
 	}
 	// TODO: 返回消息未读数
 	// TODO: 群聊

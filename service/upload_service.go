@@ -3,6 +3,7 @@ package service
 import (
 	"DiTing-Go/dal/model"
 	"DiTing-Go/domain/dto"
+	"DiTing-Go/domain/enum"
 	voResp "DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
 	"DiTing-Go/pkg/resp"
@@ -78,9 +79,9 @@ func GetPreSigned(c *gin.Context) {
 		Url:    url.String(),
 		Policy: formData,
 	}
+	tx := global.Query.Begin()
 	// 插入消息表
-	message := global.Query.Message
-	messageQ := message.WithContext(ctx)
+	messageTx := tx.Message.WithContext(ctx)
 	base := dto.MessageBaseDto{
 		Url:  url.String(),
 		Size: -1,
@@ -94,8 +95,11 @@ func GetPreSigned(c *gin.Context) {
 	}
 	jsonStr, err := json.Marshal(extra)
 	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err)
+		}
 		global.Logger.Errorf("json序列化失败 %s", err)
-		resp.ErrorResponse(c, "文件上传失败，请稍后再试")
+		resp.ErrorResponse(c, "获取签名失败，请稍后再试")
 		c.Abort()
 		return
 	}
@@ -108,11 +112,66 @@ func GetPreSigned(c *gin.Context) {
 		Type:    3,
 		Extra:   string(jsonStr),
 	}
-	if err := messageQ.Create(&newMsg); err != nil {
+	if err := messageTx.Create(&newMsg); err != nil {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err)
+		}
 		global.Logger.Errorf("数据库插入失败 %s", err)
-		resp.ErrorResponse(c, "文件上传失败，请稍后再试")
+		resp.ErrorResponse(c, "获取签名失败，请稍后再试")
 		c.Abort()
 		return
+	}
+	// 更新会话表
+	room := global.Query.Room
+	roomTx := tx.Room.WithContext(ctx)
+	roomR, err := roomTx.Where(room.ID.Eq(roomId)).First()
+	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err)
+		}
+		global.Logger.Errorf("查询房间失败 %s", err)
+		resp.ErrorResponse(c, "获取签名失败，请稍后再试")
+		c.Abort()
+		return
+	}
+	var uids []int64
+	if roomR.Type == enum.PERSONAL {
+		roomFriend := global.Query.RoomFriend
+		roomFriendTx := roomFriend.WithContext(ctx)
+		roomFriendR, err := roomFriendTx.Where(roomFriend.RoomID.Eq(roomR.ID)).First()
+		if err != nil {
+			if err := tx.Rollback(); err != nil {
+				global.Logger.Errorf("事务回滚失败 %s", err)
+			}
+			global.Logger.Errorf("查询好友房间失败 %s", err)
+			resp.ErrorResponse(c, "获取签名失败，请稍后再试")
+			c.Abort()
+			return
+		}
+		uids = []int64{roomFriendR.Uid1, roomFriendR.Uid2}
+	}
+	//TODO:群聊
+	//更新会话表
+	update := model.Contact{
+		LastMsgID:  newMsg.ID,
+		UpdateTime: time.Now(),
+		ActiveTime: time.Now(),
+	}
+	contact := global.Query.Contact
+	contactTx := contact.WithContext(ctx)
+	_, err = contactTx.Where(contact.UID.In(uids...), contact.RoomID.Eq(roomId)).Updates(&update)
+	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err)
+		}
+		global.Logger.Errorf("更新会话失败 %s", err)
+		resp.ErrorResponse(c, "获取签名失败，请稍后再试")
+		c.Abort()
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		global.Logger.Errorf("事务提交失败 %s", err)
 	}
 
 	resp.SuccessResponse(c, preSignedResp)
