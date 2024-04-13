@@ -16,7 +16,7 @@ func init() {
 	//日志文件
 	fileName := path.Join(logFilePath, logFileName)
 	//写入文件
-	src, err := os.OpenFile(fileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+	src, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		fmt.Println("err", err)
 	}

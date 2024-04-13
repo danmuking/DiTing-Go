@@ -75,6 +75,12 @@ func initGin() {
 		apiMsg.POST("textMsg", service.SendTextMsgService)
 	}
 
+	apiFile := router.Group("/api/file")
+	apiFile.Use(middleware.JWT())
+	{
+		apiFile.GET("getPreSigned", service.GetPreSigned)
+	}
+
 	err := router.Run(":5000")
 	if err != nil {
 		return
