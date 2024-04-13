@@ -192,6 +192,7 @@ func GetContactDetail(roomID int64, pageRequest cursorUtils.PageReq) (*cursorUti
 			ReplyMsgID: msg.ReplyMsgID,
 			GapCount:   msg.GapCount,
 			Type:       msg.Type,
+			Extra:      msg.Extra,
 			CreateTime: msg.CreateTime,
 			UserName:   userMap[msg.FromUID].Name,
 			UserAvatar: userMap[msg.FromUID].Avatar,
