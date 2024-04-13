@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	err := global.Bus.SubscribeAsync(enum.FriendNewEvent, FriendNewEvent, true)
+	err := global.Bus.Subscribe(enum.FriendNewEvent, FriendNewEvent)
 	if err != nil {
 		log.Println("订阅事件失败", err.Error())
 	}

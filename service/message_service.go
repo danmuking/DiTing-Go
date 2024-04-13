@@ -31,7 +31,7 @@ func SendTextMsgService(c *gin.Context) {
 		log.Println("参数错误", err.Error())
 		return
 	}
-	msg.Type = enum.TextMessage
+	msg.Type = enum.TextMessageType
 	msg.FromUID = uid
 	if msg.Extra == "" {
 		msg.Extra = "{}"

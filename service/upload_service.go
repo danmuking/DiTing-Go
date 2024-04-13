@@ -121,59 +121,8 @@ func GetPreSigned(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	// 更新会话表
-	room := global.Query.Room
-	roomTx := tx.Room.WithContext(ctx)
-	roomR, err := roomTx.Where(room.ID.Eq(roomId)).First()
-	if err != nil {
-		if err := tx.Rollback(); err != nil {
-			global.Logger.Errorf("事务回滚失败 %s", err)
-		}
-		global.Logger.Errorf("查询房间失败 %s", err)
-		resp.ErrorResponse(c, "获取签名失败，请稍后再试")
-		c.Abort()
-		return
-	}
-	var uids []int64
-	if roomR.Type == enum.PERSONAL {
-		roomFriend := global.Query.RoomFriend
-		roomFriendTx := roomFriend.WithContext(ctx)
-		roomFriendR, err := roomFriendTx.Where(roomFriend.RoomID.Eq(roomR.ID)).First()
-		if err != nil {
-			if err := tx.Rollback(); err != nil {
-				global.Logger.Errorf("事务回滚失败 %s", err)
-			}
-			global.Logger.Errorf("查询好友房间失败 %s", err)
-			resp.ErrorResponse(c, "获取签名失败，请稍后再试")
-			c.Abort()
-			return
-		}
-		uids = []int64{roomFriendR.Uid1, roomFriendR.Uid2}
-	}
-	//TODO:群聊
-	//更新会话表
-	update := model.Contact{
-		LastMsgID:  newMsg.ID,
-		UpdateTime: time.Now(),
-		ActiveTime: time.Now(),
-	}
-	contact := global.Query.Contact
-	contactTx := contact.WithContext(ctx)
-	_, err = contactTx.Where(contact.UID.In(uids...), contact.RoomID.Eq(roomId)).Updates(&update)
-	if err != nil {
-		if err := tx.Rollback(); err != nil {
-			global.Logger.Errorf("事务回滚失败 %s", err)
-		}
-		global.Logger.Errorf("更新会话失败 %s", err)
-		resp.ErrorResponse(c, "获取签名失败，请稍后再试")
-		c.Abort()
-		return
-	}
 
-	if err := tx.Commit(); err != nil {
-		global.Logger.Errorf("事务提交失败 %s", err)
-	}
-
+	global.Bus.Publish(enum.NewMessageEvent, newMsg)
 	resp.SuccessResponse(c, preSignedResp)
 	return
 }

@@ -8,12 +8,54 @@ import (
 	"DiTing-Go/websocket/service"
 	"context"
 	"log"
+	"time"
 )
 
 func init() {
-	err := global.Bus.SubscribeAsync(enum.NewMessageEvent, NewMsgEvent, false)
+	err := global.Bus.Subscribe(enum.NewMessageEvent, NewMsgEvent)
 	if err != nil {
 		log.Println("订阅事件失败", err.Error())
+	}
+	err = global.Bus.Subscribe(enum.NewMessageEvent, UpdateContactEvent)
+	if err != nil {
+		log.Println("订阅事件失败", err.Error())
+	}
+}
+
+func UpdateContactEvent(msg model.Message) {
+	// 更新会话表
+	ctx := context.Background()
+	room := global.Query.Room
+	roomQ := room.WithContext(ctx)
+	roomR, err := roomQ.Where(room.ID.Eq(msg.RoomID)).First()
+	if err != nil {
+		global.Logger.Errorf("查询房间失败 %s", err)
+		return
+	}
+	var uids []int64
+	if roomR.Type == enum.PERSONAL {
+		roomFriend := global.Query.RoomFriend
+		roomFriendQ := roomFriend.WithContext(ctx)
+		roomFriendR, err := roomFriendQ.Where(roomFriend.RoomID.Eq(roomR.ID)).First()
+		if err != nil {
+			global.Logger.Errorf("查询好友房间失败 %s", err)
+			return
+		}
+		uids = []int64{roomFriendR.Uid1, roomFriendR.Uid2}
+	}
+	//TODO:群聊
+	//更新会话表
+	update := model.Contact{
+		LastMsgID:  msg.ID,
+		UpdateTime: time.Now(),
+		ActiveTime: time.Now(),
+	}
+	contact := global.Query.Contact
+	contactQ := contact.WithContext(ctx)
+	_, err = contactQ.Where(contact.UID.In(uids...), contact.RoomID.Eq(msg.RoomID)).Updates(&update)
+	if err != nil {
+		global.Logger.Errorf("更新会话失败 %s", err)
+		return
 	}
 }
 
