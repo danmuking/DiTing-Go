@@ -39,6 +39,7 @@ func Register(c *gin.Context) {
 	user := model.User{}
 	if err := c.ShouldBind(&user); err != nil { //ShouldBind()会自动推导
 		resp.ErrorResponse(c, "参数错误")
+		c.Abort()
 		return
 	}
 
@@ -47,6 +48,7 @@ func Register(c *gin.Context) {
 	exist, _ := u.WithContext(context.Background()).Where(u.Name.Eq(user.Name)).First()
 	if exist != nil {
 		resp.ErrorResponse(c, "用户名已存在")
+		c.Abort()
 		return
 	}
 
@@ -54,6 +56,7 @@ func Register(c *gin.Context) {
 	err := u.WithContext(context.Background()).Omit(u.OpenID).Create(&user)
 	if err != nil {
 		resp.ErrorResponse(c, "系统正忙请稍后再试~")
+		c.Abort()
 		return
 	}
 	resp.SuccessResponseWithMsg(c, "注册成功")
@@ -73,6 +76,7 @@ func Login(c *gin.Context) {
 	login := model.User{}
 	if err := c.ShouldBind(&login); err != nil { //ShouldBind()会自动推导
 		resp.ErrorResponse(c, "参数错误")
+		c.Abort()
 		return
 	}
 
@@ -81,6 +85,7 @@ func Login(c *gin.Context) {
 	user, _ := u.WithContext(context.Background()).Where(u.Name.Eq(login.Name), u.Password.Eq(login.Password)).First()
 	if user == nil {
 		resp.ErrorResponse(c, "用户名或密码错误")
+		c.Abort()
 		return
 	}
 	//生成jwt
@@ -101,12 +106,18 @@ func ApplyFriend(c *gin.Context) {
 	uid := c.GetInt64("uid")
 	applyReq := req.UserApplyReq{}
 	data, err := c.GetRawData()
-	c.Request.Body = io.NopCloser(bytes.NewBuffer(data))
 	if err != nil { //ShouldBind()会自动推导
 		resp.ErrorResponse(c, "参数错误")
+		c.Abort()
 		return
 	}
-	json.Unmarshal(data, &applyReq)
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(data))
+
+	if err := json.Unmarshal(data, &applyReq); err != nil {
+		resp.ErrorResponse(c, "参数错误")
+		c.Abort()
+		return
+	}
 	friendUid := applyReq.Uid
 	//检查用户是否存在
 	user, err := query.User.WithContext(context.Background()).Where(query.User.ID.Eq(friendUid)).First()
@@ -166,7 +177,6 @@ func ApplyFriend(c *gin.Context) {
 		ReadStatus: enum.NO,
 	})
 	resp.SuccessResponseWithMsg(c, "success")
-	c.Abort()
 	return
 }
 
@@ -423,7 +433,6 @@ func Agree(c *gin.Context) {
 		FriendUID: friendUid,
 	})
 	resp.SuccessResponseWithMsg(c, "success")
-	c.Abort()
 	return
 }
 
