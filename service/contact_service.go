@@ -12,8 +12,8 @@ import (
 	"DiTing-Go/pkg/resp"
 	"context"
 	"github.com/gin-gonic/gin"
-	"log"
 	"strconv"
+	"time"
 )
 
 func GetContactListService(c *gin.Context) {
@@ -27,12 +27,14 @@ func GetContactListService(c *gin.Context) {
 		PageSize: pageSize,
 	}
 	if err := c.ShouldBindQuery(&pageRequest); err != nil { //ShouldBind()会自动推导
+		global.Logger.Errorf("参数错误 %s", err)
 		resp.ErrorResponse(c, "参数错误")
 		c.Abort()
 		return
 	}
 	pageResp, err := GetContactList(uid, pageRequest)
 	if err != nil {
+		global.Logger.Errorf("查询会话列表失败 %s", err)
 		resp.ErrorResponse(c, "查询会话列表失败")
 		c.Abort()
 		return
@@ -48,7 +50,7 @@ func GetContactList(uid int64, pageRequest cursorUtils.PageReq) (*cursorUtils.Pa
 	condition := []interface{}{"uid=?", strconv.FormatInt(uid, 10)}
 	pageResp, err := cursorUtils.Paginate(db, pageRequest, &contact, "active_time", false, condition...)
 	if err != nil {
-		log.Printf("查询会话列表失败: %s", err.Error())
+		global.Logger.Errorf("查询会话列表失败 %s", err)
 		return nil, err
 	}
 	contactList := pageResp.Data.(*[]model.Contact)
@@ -56,7 +58,7 @@ func GetContactList(uid int64, pageRequest cursorUtils.PageReq) (*cursorUtils.Pa
 	for _, contact := range *contactList {
 		contactDto, err := getContactDto(contact)
 		if err != nil {
-			log.Printf("查询会话列表失败: %s", err.Error())
+			global.Logger.Errorf("查询会话列表失败 %s", err)
 			return nil, err
 		}
 		contactDtoList = append(contactDtoList, *contactDto)
@@ -70,11 +72,14 @@ func getContactDto(contact model.Contact) (*dto.ContactDto, error) {
 	ctx := context.Background()
 	room := global.Query.Room
 	roomQ := room.WithContext(ctx)
+	msg := global.Query.Message
+	msgQ := msg.WithContext(ctx)
 	contactDto := new(dto.ContactDto)
 	contactDto.ID = contact.ID
 	// 查询房间类型
 	roomR, err := roomQ.Where(room.ID.Eq(contact.RoomID)).First()
 	if err != nil {
+		global.Logger.Errorf("查询房间失败 %s", err)
 		return nil, err
 	}
 	// 如果是个人会话，名称是对方的昵称
@@ -84,6 +89,7 @@ func getContactDto(contact model.Contact) (*dto.ContactDto, error) {
 		roomFriendQ := roomFriend.WithContext(ctx)
 		roomFriendR, err := roomFriendQ.Where(roomFriend.RoomID.Eq(roomR.ID)).First()
 		if err != nil {
+			global.Logger.Errorf("查询好友房间失败 %s", err)
 			return nil, err
 		}
 		var friendUid int64
@@ -96,6 +102,7 @@ func getContactDto(contact model.Contact) (*dto.ContactDto, error) {
 		userQ := user.WithContext(ctx)
 		userR, err := userQ.Where(user.ID.Eq(friendUid)).First()
 		if err != nil {
+			global.Logger.Errorf("查询用户失败 %s", err)
 			return nil, err
 		}
 		contactDto.Name = userR.Name
@@ -103,22 +110,27 @@ func getContactDto(contact model.Contact) (*dto.ContactDto, error) {
 		contactDto.LastTime = contact.ActiveTime
 
 		// TODO: 支持多种消息
-		msg := global.Query.Message
-		msgQ := msg.WithContext(ctx)
 		msgR, err := msgQ.Where(msg.ID.Eq(contact.LastMsgID)).First()
 		message := domainModel.Message(*msgR)
 		if err != nil {
+			global.Logger.Errorf("查询消息失败 %s", err)
 			return nil, err
 		}
 		contactDto.LastMsg = message.GetContactMsg()
 	}
+	count, err := msgQ.Where(msg.RoomID.Eq(contact.RoomID), msg.Status.Eq(enum.NORMAL), msg.CreateTime.Gt(contact.ReadTime)).Limit(99).Count()
+	if err != nil {
+		global.Logger.Errorf("统计未读数失败 %s", err)
+		return nil, err
+	}
+	contactDto.UnreadCount = int32(count)
 	// TODO: 返回消息未读数
 	// TODO: 群聊
 	return contactDto, nil
 }
 
 func GetContactDetailService(c *gin.Context) {
-
+	uid := c.GetInt64("uid")
 	roomIdString, _ := c.GetQuery("room_id")
 	roomId, _ := strconv.ParseInt(roomIdString, 10, 64)
 	//TODO:参数校验
@@ -135,14 +147,26 @@ func GetContactDetailService(c *gin.Context) {
 		c.Abort()
 		return
 	}
+	// 更新会话表
+	contact := global.Query.Contact
+	contactQ := contact.WithContext(context.Background())
+	_, err := contactQ.Where(contact.UID.Eq(uid), contact.RoomID.Eq(roomId)).Update(contact.ReadTime, time.Now())
+	if err != nil {
+		global.Logger.Errorf("更新会话失败 %s", err)
+		resp.ErrorResponse(c, "系统正忙，请稍后再试")
+		c.Abort()
+		return
+	}
+
+	// 获取会话详情
 	pageResp, err := GetContactDetail(roomId, pageRequest)
 	if err != nil {
+		global.Logger.Errorf("查询会话详情失败 %s", err)
 		resp.ErrorResponse(c, "系统正忙，请稍后再试")
 		c.Abort()
 		return
 	}
 	resp.SuccessResponse(c, pageResp)
-	c.Abort()
 	return
 }
 
@@ -154,7 +178,7 @@ func GetContactDetail(roomID int64, pageRequest cursorUtils.PageReq) (*cursorUti
 	condition := []interface{}{"room_id=? AND status=?", strconv.FormatInt(roomID, 10), "0"}
 	pageResp, err := cursorUtils.Paginate(db, pageRequest, &msgs, "create_time", false, condition...)
 	if err != nil {
-		log.Printf("查询消息失败: %s", err.Error())
+		global.Logger.Errorf("查询消息失败: %s", err.Error())
 		return nil, err
 	}
 	msgList := pageResp.Data.(*[]model.Message)
@@ -175,7 +199,7 @@ func GetContactDetail(roomID int64, pageRequest cursorUtils.PageReq) (*cursorUti
 	userQ := user.WithContext(ctx)
 	users, err := userQ.Where(user.ID.In(userIdList...)).Find()
 	if err != nil {
-		log.Printf("查询用户失败: %s", err.Error())
+		global.Logger.Errorf("查询用户失败: %s", err.Error())
 		return nil, err
 	}
 	userMap := make(map[int64]*model.User)

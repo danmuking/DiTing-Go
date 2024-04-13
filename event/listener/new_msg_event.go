@@ -12,11 +12,11 @@ import (
 )
 
 func init() {
-	err := global.Bus.Subscribe(enum.NewMessageEvent, NewMsgEvent)
+	err := global.Bus.SubscribeAsync(enum.NewMessageEvent, NewMsgEvent, false)
 	if err != nil {
 		log.Println("订阅事件失败", err.Error())
 	}
-	err = global.Bus.Subscribe(enum.NewMessageEvent, UpdateContactEvent)
+	err = global.Bus.SubscribeAsync(enum.NewMessageEvent, UpdateContactEvent, false)
 	if err != nil {
 		log.Println("订阅事件失败", err.Error())
 	}

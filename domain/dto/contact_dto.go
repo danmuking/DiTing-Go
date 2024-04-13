@@ -15,4 +15,6 @@ type ContactDto struct {
 	LastMsg string `json:"last_msg"`
 	// 最后一条消息时间
 	LastTime time.Time `json:"last_time"`
+	// 未读消息数
+	UnreadCount int32 `json:"unread_count"`
 }

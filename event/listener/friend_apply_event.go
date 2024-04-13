@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	if err := global.Bus.Subscribe(enum.FriendApplyEvent, FriendApplyEvent); err != nil {
+	if err := global.Bus.SubscribeAsync(enum.FriendApplyEvent, FriendApplyEvent, false); err != nil {
 		log.Println("订阅事件失败", err.Error())
 	}
 }

@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	err := global.Bus.Subscribe(enum.FriendNewEvent, FriendNewEvent)
+	err := global.Bus.SubscribeAsync(enum.FriendNewEvent, FriendNewEvent, false)
 	if err != nil {
 		log.Println("订阅事件失败", err.Error())
 	}
@@ -111,12 +111,12 @@ func FriendNewEvent(friend model.UserFriend) {
 		log.Println("创建会话失败", err.Error())
 		return
 	}
-
 	// 提交
 	if err := tx.Commit(); err != nil {
 		log.Println("事务提交失败", err.Error())
 		return
 	}
 	// 发送新消息事件
-	global.Bus.Publish("NewMsgEvent", newMsg)
+	global.Bus.Publish(enum.NewMessageEvent, newMsg)
+
 }
