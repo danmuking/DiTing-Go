@@ -8,7 +8,6 @@ import (
 	"DiTing-Go/pkg/resp"
 	"context"
 	"github.com/gin-gonic/gin"
-	"log"
 )
 
 // CreateGroupService 创建群聊
@@ -39,12 +38,12 @@ func CreateGroupService(c *gin.Context) {
 	}
 	if err := roomTx.Create(&newRoom); err != nil {
 		if err := tx.Rollback(); err != nil {
-			log.Println("事务回滚失败", err.Error())
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 			return
 		}
 		resp.ErrorResponse(c, "创建群聊失败")
 		c.Abort()
-		log.Println("添加房间表失败", err.Error())
+		global.Logger.Errorf("添加房间表失败 %s", err.Error())
 		return
 	}
 
@@ -54,12 +53,12 @@ func CreateGroupService(c *gin.Context) {
 	userR, err := userTx.Where(user.ID.Eq(uid)).First()
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
-			log.Println("事务回滚失败", err.Error())
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 			return
 		}
 		resp.ErrorResponse(c, "创建群聊失败")
 		c.Abort()
-		log.Println("查询用户表失败", err.Error())
+		global.Logger.Errorf("查询用户表失败 %s", err.Error())
 		return
 	}
 
@@ -74,12 +73,12 @@ func CreateGroupService(c *gin.Context) {
 	}
 	if err := roomGroupTx.Create(&newRoomGroup); err != nil {
 		if err := tx.Rollback(); err != nil {
-			log.Println("事务回滚失败", err.Error())
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 			return
 		}
 		resp.ErrorResponse(c, "创建群聊失败")
 		c.Abort()
-		log.Println("添加群聊表失败", err.Error())
+		global.Logger.Errorf("添加群聊表失败 %s", err.Error())
 		return
 	}
 
@@ -91,16 +90,16 @@ func CreateGroupService(c *gin.Context) {
 	}
 	if err := contactTx.Create(&newContact); err != nil {
 		if err := tx.Rollback(); err != nil {
-			log.Println("事务回滚失败", err.Error())
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 			return
 		}
 		resp.ErrorResponse(c, "创建群聊失败")
 		c.Abort()
-		log.Println("添加会话表失败", err.Error())
+		global.Logger.Errorf("添加会话表失败 %s", err.Error())
 		return
 	}
 	if err := tx.Commit(); err != nil {
-		log.Println("事务提交失败", err.Error())
+		global.Logger.Errorf("事务提交失败 %s", err.Error())
 		resp.ErrorResponse(c, "创建群聊失败")
 		c.Abort()
 		return
