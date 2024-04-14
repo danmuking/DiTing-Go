@@ -61,6 +61,12 @@ func initGin() {
 		// TODO:测试使用
 		apiUser.GET("/test", test)
 	}
+	apiGroup := router.Group("/api/group")
+	apiGroup.Use(middleware.JWT())
+	{
+		//创建群聊
+		apiGroup.POST("/create", service.CreateGroupService)
+	}
 
 	apiContact := router.Group("/api/contact")
 	apiContact.Use(middleware.JWT())
