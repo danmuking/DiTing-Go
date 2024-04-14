@@ -5,3 +5,11 @@ mysql:
   password: diting
 jwt:
   secret: diting
+log:
+  log_file_path: ./logs
+  log_file_name: diting.log
+minio:
+  accessKey: xxx
+  accessSecret: xxx
+  endPoint: xxx.xxx.xxx.xxx:9000
+  useSSL: false
