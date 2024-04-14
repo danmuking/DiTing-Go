@@ -66,6 +66,7 @@ func initGin() {
 	{
 		//创建群聊
 		apiGroup.POST("/create", service.CreateGroupService)
+		apiGroup.DELETE("/:id", service.DeleteGroupService)
 	}
 
 	apiContact := router.Group("/api/contact")

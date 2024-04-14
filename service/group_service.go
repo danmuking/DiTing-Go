@@ -104,6 +104,96 @@ func CreateGroupService(c *gin.Context) {
 		c.Abort()
 		return
 	}
+	// TODO: 添加群组成员表
+
+	resp.SuccessResponseWithMsg(c, "success")
+	return
+}
+
+// DeleteGroupService 删除群聊
+//
+//	@Summary	删除群聊
+//	@Produce	json
+//	@Param		id	body		string					true	"群聊ID"
+//	@Success	200	{object}	resp.ResponseData	"成功"
+//	@Failure	500	{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/group/:id [delete]
+func DeleteGroupService(c *gin.Context) {
+	uid := c.GetInt64("uid")
+	deleteGroupReq := req.DeleteGroupReq{}
+	if err := c.ShouldBindUri(&deleteGroupReq); err != nil { //ShouldBind()会自动推导
+		resp.ErrorResponse(c, "参数错误")
+		global.Logger.Errorf("参数错误: %v", err)
+		c.Abort()
+		return
+	}
+
+	tx := global.Query.Begin()
+	ctx := context.Background()
+	// TODO:查询用户是否在群聊中
+	// TODO:删除所有成员的会话表
+	// 删除会话表
+	contact := global.Query.Contact
+	contactTx := tx.Contact.WithContext(ctx)
+	if _, err := contactTx.Where(contact.UID.Eq(uid), contact.RoomID.Eq(deleteGroupReq.ID)).Delete(); err != nil {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
+			return
+		}
+		resp.ErrorResponse(c, "删除群聊失败")
+		c.Abort()
+		global.Logger.Errorf("删除会话表失败 %s", err.Error())
+		return
+	}
+	// 删除群聊表
+	roomGroup := global.Query.RoomGroup
+	roomGroupTx := tx.RoomGroup.WithContext(ctx)
+	if _, err := roomGroupTx.Where(roomGroup.RoomID.Eq(deleteGroupReq.ID)).Delete(); err != nil {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
+			return
+		}
+		resp.ErrorResponse(c, "删除群聊失败")
+		c.Abort()
+		global.Logger.Errorf("删除群聊表失败 %s", err.Error())
+		return
+	}
+	// 删除房间表
+	room := global.Query.Room
+	roomTx := tx.Room.WithContext(ctx)
+	if _, err := roomTx.Where(room.ID.Eq(deleteGroupReq.ID)).Delete(); err != nil {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
+			return
+		}
+		resp.ErrorResponse(c, "删除群聊失败")
+		c.Abort()
+		global.Logger.Errorf("删除房间表失败 %s", err.Error())
+		return
+	}
+	// TODO:抽取为事件
+	// 删除消息表
+	message := global.Query.Message
+	messageTx := tx.Message.WithContext(ctx)
+	msg := model.Message{
+		Status: 0,
+	}
+	if _, err := messageTx.Where(message.RoomID.Eq(deleteGroupReq.ID)).Updates(msg); err != nil {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
+			return
+		}
+		resp.ErrorResponse(c, "删除群聊失败")
+		c.Abort()
+		global.Logger.Errorf("删除消息表失败 %s", err.Error())
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		global.Logger.Errorf("事务提交失败 %s", err.Error())
+		resp.ErrorResponse(c, "删除群聊失败")
+		c.Abort()
+		return
+	}
 
 	resp.SuccessResponseWithMsg(c, "success")
 	return
