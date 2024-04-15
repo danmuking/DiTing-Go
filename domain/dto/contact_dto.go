@@ -1,14 +1,13 @@
 package dto
 
 import (
-	"gorm.io/gen/field"
 	"time"
 )
 
 type ContactDto struct {
 	ID int64 `json:"ID"`
 	// 头像
-	Avatar field.String `json:"avatar"`
+	Avatar string `json:"avatar"`
 	// 会话名称
 	Name string `json:"name"`
 	// 最后一条消息内容

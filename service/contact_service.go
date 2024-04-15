@@ -106,7 +106,7 @@ func getContactDto(contact model.Contact) (*dto.ContactDto, error) {
 			return nil, err
 		}
 		contactDto.Name = userR.Name
-		contactDto.Avatar = user.Avatar
+		contactDto.Avatar = userR.Avatar
 		contactDto.LastTime = contact.ActiveTime
 
 		// TODO: 支持多种消息
@@ -122,9 +122,22 @@ func getContactDto(contact model.Contact) (*dto.ContactDto, error) {
 	if err != nil {
 		global.Logger.Errorf("统计未读数失败 %s", err)
 		return nil, err
+	} else if roomR.Type == enum.GROUP {
+		// 查询群聊表
+		roomGroup := global.Query.RoomGroup
+		roomGroupQ := roomGroup.WithContext(ctx)
+		roomGroupR, err := roomGroupQ.Where(roomGroup.RoomID.Eq(roomR.ID)).First()
+		if err != nil {
+			global.Logger.Errorf("查询群聊失败 %s", err)
+			return nil, err
+		}
+		contactDto.Name = roomGroupR.Name
+		contactDto.Avatar = roomGroupR.Avatar
+		contactDto.LastTime = contact.ActiveTime
+		// TODO:热点群聊
+
 	}
 	contactDto.UnreadCount = int32(count)
-	// TODO: 返回消息未读数
 	// TODO: 群聊
 	return contactDto, nil
 }
