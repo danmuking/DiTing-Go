@@ -29,6 +29,14 @@ func CreateGroupService(c *gin.Context) {
 	}
 
 	tx := global.Query.Begin()
+	defer func() {
+		if err := tx.Commit(); err != nil {
+			global.Logger.Errorf("事务提交失败 %s", err.Error())
+			resp.ErrorResponse(c, "创建群聊失败")
+			c.Abort()
+			return
+		}
+	}()
 	ctx := context.Background()
 	// 创建房间表
 	roomTx := tx.Room.WithContext(ctx)
@@ -98,13 +106,24 @@ func CreateGroupService(c *gin.Context) {
 		global.Logger.Errorf("添加会话表失败 %s", err.Error())
 		return
 	}
-	if err := tx.Commit(); err != nil {
-		global.Logger.Errorf("事务提交失败 %s", err.Error())
+
+	groupMemberTx := tx.GroupMember.WithContext(ctx)
+	newGroupMember := model.GroupMember{
+		UID:     uid,
+		GroupID: newRoomGroup.ID,
+		// TODO: 1为群主,抽取为常量
+		Role: 1,
+	}
+	if err := groupMemberTx.Create(&newGroupMember); err != nil {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
+			return
+		}
 		resp.ErrorResponse(c, "创建群聊失败")
 		c.Abort()
+		global.Logger.Errorf("添加群组成员表失败 %s", err.Error())
 		return
 	}
-	// TODO: 添加群组成员表
 
 	resp.SuccessResponseWithMsg(c, "success")
 	return
