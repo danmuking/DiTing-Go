@@ -108,15 +108,6 @@ func getContactDto(contact model.Contact) (*dto.ContactDto, error) {
 		contactDto.Name = userR.Name
 		contactDto.Avatar = userR.Avatar
 		contactDto.LastTime = contact.ActiveTime
-
-		// TODO: 支持多种消息
-		msgR, err := msgQ.Where(msg.ID.Eq(contact.LastMsgID)).First()
-		message := domainModel.Message(*msgR)
-		if err != nil {
-			global.Logger.Errorf("查询消息失败 %s", err)
-			return nil, err
-		}
-		contactDto.LastMsg = message.GetContactMsg()
 	}
 	count, err := msgQ.Where(msg.RoomID.Eq(contact.RoomID), msg.Status.Eq(enum.NORMAL), msg.CreateTime.Gt(contact.ReadTime)).Limit(99).Count()
 	if err != nil {
@@ -134,9 +125,18 @@ func getContactDto(contact model.Contact) (*dto.ContactDto, error) {
 		contactDto.Name = roomGroupR.Name
 		contactDto.Avatar = roomGroupR.Avatar
 		contactDto.LastTime = contact.ActiveTime
+
 		// TODO:热点群聊
 
 	}
+	// TODO: 支持多种消息
+	msgR, err := msgQ.Where(msg.ID.Eq(contact.LastMsgID)).First()
+	message := domainModel.Message(*msgR)
+	if err != nil {
+		global.Logger.Errorf("查询消息失败 %s", err)
+		return nil, err
+	}
+	contactDto.LastMsg = message.GetContactMsg()
 	contactDto.UnreadCount = int32(count)
 	// TODO: 群聊
 	return contactDto, nil
