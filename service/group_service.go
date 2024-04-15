@@ -148,22 +148,59 @@ func DeleteGroupService(c *gin.Context) {
 	}
 
 	tx := global.Query.Begin()
+	defer func() {
+		if err := tx.Commit(); err != nil {
+			global.Logger.Errorf("事务提交失败 %s", err.Error())
+			resp.ErrorResponse(c, "删除群聊失败")
+			c.Abort()
+			return
+		}
+	}()
 	ctx := context.Background()
 	// TODO:查询用户是否在群聊中
-	// TODO:删除所有成员的会话表
-	// 删除会话表
-	contact := global.Query.Contact
-	contactTx := tx.Contact.WithContext(ctx)
-	if _, err := contactTx.Where(contact.UID.Eq(uid), contact.RoomID.Eq(deleteGroupReq.ID)).Delete(); err != nil {
+	groupMember := global.Query.GroupMember
+	groupMemberTx := tx.GroupMember.WithContext(ctx)
+	// 查询用户是否是群主
+	_, err := groupMemberTx.Where(groupMember.UID.Eq(uid), groupMember.GroupID.Eq(deleteGroupReq.ID), groupMember.Role.Eq(1)).First()
+	if err != nil {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 			return
 		}
 		resp.ErrorResponse(c, "删除群聊失败")
 		c.Abort()
-		global.Logger.Errorf("删除会话表失败 %s", err.Error())
+		global.Logger.Errorf("查询群组成员表失败 %s", err.Error())
 		return
 	}
+	// 获取群聊成员
+	groupMemberList, err := groupMemberTx.Where(groupMember.GroupID.Eq(deleteGroupReq.ID)).Find()
+	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
+			return
+		}
+		resp.ErrorResponse(c, "删除群聊失败")
+		c.Abort()
+		global.Logger.Errorf("查询群组成员表失败 %s", err.Error())
+		return
+	}
+
+	// 删除所有成员的会话表
+	for _, groupMember := range groupMemberList {
+		contact := global.Query.Contact
+		contactTx := tx.Contact.WithContext(ctx)
+		if _, err := contactTx.Where(contact.UID.Eq(groupMember.UID), contact.RoomID.Eq(deleteGroupReq.ID)).Delete(); err != nil {
+			if err := tx.Rollback(); err != nil {
+				global.Logger.Errorf("事务回滚失败 %s", err.Error())
+				return
+			}
+			resp.ErrorResponse(c, "删除群聊失败")
+			c.Abort()
+			global.Logger.Errorf("删除会话表失败 %s", err.Error())
+			return
+		}
+	}
+
 	// 删除群聊表
 	roomGroup := global.Query.RoomGroup
 	roomGroupTx := tx.RoomGroup.WithContext(ctx)
@@ -190,6 +227,17 @@ func DeleteGroupService(c *gin.Context) {
 		global.Logger.Errorf("删除房间表失败 %s", err.Error())
 		return
 	}
+	// 删除群组成员表
+	if _, err := groupMemberTx.Where(groupMember.GroupID.Eq(deleteGroupReq.ID)).Delete(); err != nil {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
+			return
+		}
+		resp.ErrorResponse(c, "删除群聊失败")
+		c.Abort()
+		global.Logger.Errorf("删除群组成员表失败 %s", err.Error())
+		return
+	}
 	// TODO:抽取为事件
 	// 删除消息表
 	message := global.Query.Message
@@ -207,12 +255,7 @@ func DeleteGroupService(c *gin.Context) {
 		global.Logger.Errorf("删除消息表失败 %s", err.Error())
 		return
 	}
-	if err := tx.Commit(); err != nil {
-		global.Logger.Errorf("事务提交失败 %s", err.Error())
-		resp.ErrorResponse(c, "删除群聊失败")
-		c.Abort()
-		return
-	}
+	// TODO: 删除群聊仅禁止发送新消息，不删除消息
 
 	resp.SuccessResponseWithMsg(c, "success")
 	return
