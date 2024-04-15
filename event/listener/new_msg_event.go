@@ -42,8 +42,22 @@ func UpdateContactEvent(msg model.Message) {
 			return
 		}
 		uids = []int64{roomFriendR.Uid1, roomFriendR.Uid2}
+	} else if roomR.Type == enum.GROUP {
+		// 查询所有群成员
+		roomGroup := global.Query.RoomGroup
+		roomGroupQ := roomGroup.WithContext(ctx)
+		roomGroupR, err := roomGroupQ.Where(roomGroup.RoomID.Eq(roomR.ID)).First()
+		if err != nil {
+			global.Logger.Errorf("查询群聊失败 %s", err)
+			return
+		}
+		groupMember := global.Query.GroupMember
+		groupMemberQ := groupMember.WithContext(ctx)
+		groupMembers, _ := groupMemberQ.Where(groupMember.GroupID.Eq(roomGroupR.ID)).Find()
+		for _, groupMember := range groupMembers {
+			uids = append(uids, groupMember.UID)
+		}
 	}
-	//TODO:群聊
 	//更新会话表
 	update := model.Contact{
 		LastMsgID:  msg.ID,

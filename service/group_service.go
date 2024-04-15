@@ -298,3 +298,133 @@ func DeleteGroupService(c *gin.Context) {
 	resp.SuccessResponseWithMsg(c, "success")
 	return
 }
+
+// JoinGroupService 加入群聊
+//
+//	@Summary	加入群聊
+//	@Produce	json
+//	@Param		id	body		int					true	"房间id"
+//	@Success	200	{object}	resp.ResponseData	"成功"
+//	@Failure	500	{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/group/create [post]
+func JoinGroupService(c *gin.Context) {
+	uid := c.GetInt64("uid")
+	joinGroupReq := req.JoinGroupReq{}
+	if err := c.ShouldBind(&joinGroupReq); err != nil { //ShouldBind()会自动推导
+		resp.ErrorResponse(c, "参数错误")
+		global.Logger.Errorf("参数错误: %v", err)
+		c.Abort()
+		return
+	}
+	ctx := context.Background()
+	// 房间是否存在
+	room := global.Query.Room
+	roomQ := room.WithContext(ctx)
+	roomR, err := roomQ.Where(room.ID.Eq(joinGroupReq.ID)).First()
+	if err != nil {
+		resp.ErrorResponse(c, "加入群聊失败")
+		global.Logger.Errorf("查询房间失败 %s", err)
+		c.Abort()
+		return
+	}
+	if roomR.Type != enum.GROUP {
+		resp.ErrorResponse(c, "加入群聊失败")
+		global.Logger.Errorf("房间类型错误 %s", err)
+		c.Abort()
+		return
+	}
+	// 是否已经加入群聊
+	roomGroup := global.Query.RoomGroup
+	roomGroupQ := roomGroup.WithContext(ctx)
+	// 查询群聊表
+	roomGroupR, err := roomGroupQ.Where(roomGroup.RoomID.Eq(roomR.ID)).First()
+	if err != nil {
+		resp.ErrorResponse(c, "加入群聊失败")
+		global.Logger.Errorf("查询群聊失败 %s", err)
+		c.Abort()
+		return
+	}
+
+	groupMember := global.Query.GroupMember
+	groupMemberQ := groupMember.WithContext(ctx)
+	groupMemberR, err := groupMemberQ.Where(groupMember.UID.Eq(uid), groupMember.GroupID.Eq(roomGroupR.ID)).First()
+	if err != nil && err.Error() != "record not found" {
+		resp.ErrorResponse(c, "加入群聊失败")
+		global.Logger.Errorf("查询群成员表失败 %s", err)
+		c.Abort()
+		return
+	}
+	if groupMemberR != nil {
+		resp.ErrorResponse(c, "禁止重复加入群聊")
+		c.Abort()
+		return
+	}
+
+	// 加入群聊
+	tx := global.Query.Begin()
+	defer func() {
+		if err := tx.Commit(); err != nil {
+			global.Logger.Errorf("事务提交失败 %s", err.Error())
+			resp.ErrorResponse(c, "加入群聊失败")
+			c.Abort()
+			return
+		}
+	}()
+	groupMemberTx := tx.GroupMember.WithContext(ctx)
+	newGroupMember := model.GroupMember{
+		UID:     uid,
+		GroupID: roomGroupR.ID,
+		// 普通成员
+		Role: 3,
+	}
+	if err := groupMemberTx.Create(&newGroupMember); err != nil {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
+			return
+		}
+		resp.ErrorResponse(c, "加入群聊失败")
+		c.Abort()
+		global.Logger.Errorf("添加群组成员表失败 %s", err.Error())
+		return
+	}
+	// 创建会话表
+	contactTx := tx.Contact.WithContext(ctx)
+	newContact := model.Contact{
+		UID:    uid,
+		RoomID: roomR.ID,
+	}
+	if err := contactTx.Create(&newContact); err != nil {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
+			return
+		}
+		resp.ErrorResponse(c, "加入群聊失败")
+		c.Abort()
+		global.Logger.Errorf("添加会话表失败 %s", err.Error())
+		return
+	}
+
+	// 自动发送一条消息
+	messageTx := tx.Message.WithContext(ctx)
+	newMessage := model.Message{
+		FromUID: uid,
+		RoomID:  roomR.ID,
+		Type:    enum.TextMessageType,
+		Content: "大家好~",
+		Extra:   "{}",
+	}
+	if err := messageTx.Create(&newMessage); err != nil {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
+			return
+		}
+		resp.ErrorResponse(c, "加入群聊失败")
+		c.Abort()
+		global.Logger.Errorf("添加消息表失败 %s", err.Error())
+		return
+	}
+	global.Bus.Publish(enum.NewMessageEvent, newMessage)
+
+	resp.SuccessResponseWithMsg(c, "success")
+	return
+}
