@@ -158,7 +158,7 @@ func CreateGroupService(c *gin.Context) {
 //
 //	@Summary	删除群聊
 //	@Produce	json
-//	@Param		id	body		string					true	"群聊ID"
+//	@Param		id	body		string					true	"房间ID"
 //	@Success	200	{object}	resp.ResponseData	"成功"
 //	@Failure	500	{object}	resp.ResponseData	"内部错误"
 //	@Router		/api/group/:id [delete]
@@ -182,11 +182,26 @@ func DeleteGroupService(c *gin.Context) {
 		}
 	}()
 	ctx := context.Background()
+	// 查询群聊id
+	roomGroup := global.Query.RoomGroup
+	roomGroupTx := tx.RoomGroup.WithContext(ctx)
+	roomGroupR, err := roomGroupTx.Where(roomGroup.RoomID.Eq(deleteGroupReq.ID)).First()
+	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
+			return
+		}
+		resp.ErrorResponse(c, "删除群聊失败")
+		c.Abort()
+		global.Logger.Errorf("查询群聊表失败 %s", err.Error())
+		return
+
+	}
 	// TODO:查询用户是否在群聊中
 	groupMember := global.Query.GroupMember
 	groupMemberTx := tx.GroupMember.WithContext(ctx)
 	// 查询用户是否是群主
-	_, err := groupMemberTx.Where(groupMember.UID.Eq(uid), groupMember.GroupID.Eq(deleteGroupReq.ID), groupMember.Role.Eq(1)).First()
+	_, err = groupMemberTx.Where(groupMember.UID.Eq(uid), groupMember.GroupID.Eq(roomGroupR.ID), groupMember.Role.Eq(1)).First()
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
@@ -198,7 +213,7 @@ func DeleteGroupService(c *gin.Context) {
 		return
 	}
 	// 获取群聊成员
-	groupMemberList, err := groupMemberTx.Where(groupMember.GroupID.Eq(deleteGroupReq.ID)).Find()
+	groupMemberList, err := groupMemberTx.Where(groupMember.GroupID.Eq(roomGroupR.ID)).Find()
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
@@ -214,7 +229,7 @@ func DeleteGroupService(c *gin.Context) {
 	for _, groupMember := range groupMemberList {
 		contact := global.Query.Contact
 		contactTx := tx.Contact.WithContext(ctx)
-		if _, err := contactTx.Where(contact.UID.Eq(groupMember.UID), contact.RoomID.Eq(deleteGroupReq.ID)).Delete(); err != nil {
+		if _, err := contactTx.Where(contact.UID.Eq(groupMember.UID), contact.RoomID.Eq(roomGroupR.ID)).Delete(); err != nil {
 			if err := tx.Rollback(); err != nil {
 				global.Logger.Errorf("事务回滚失败 %s", err.Error())
 				return
@@ -227,9 +242,7 @@ func DeleteGroupService(c *gin.Context) {
 	}
 
 	// 删除群聊表
-	roomGroup := global.Query.RoomGroup
-	roomGroupTx := tx.RoomGroup.WithContext(ctx)
-	if _, err := roomGroupTx.Where(roomGroup.RoomID.Eq(deleteGroupReq.ID)).Delete(); err != nil {
+	if _, err := roomGroupTx.Where(roomGroup.RoomID.Eq(roomGroupR.ID)).Delete(); err != nil {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 			return
@@ -242,7 +255,7 @@ func DeleteGroupService(c *gin.Context) {
 	// 删除房间表
 	room := global.Query.Room
 	roomTx := tx.Room.WithContext(ctx)
-	if _, err := roomTx.Where(room.ID.Eq(deleteGroupReq.ID)).Delete(); err != nil {
+	if _, err := roomTx.Where(room.ID.Eq(roomGroupR.ID)).Delete(); err != nil {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 			return
@@ -253,7 +266,7 @@ func DeleteGroupService(c *gin.Context) {
 		return
 	}
 	// 删除群组成员表
-	if _, err := groupMemberTx.Where(groupMember.GroupID.Eq(deleteGroupReq.ID)).Delete(); err != nil {
+	if _, err := groupMemberTx.Where(groupMember.GroupID.Eq(roomGroupR.ID)).Delete(); err != nil {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 			return
@@ -270,7 +283,7 @@ func DeleteGroupService(c *gin.Context) {
 	msg := model.Message{
 		Status: 0,
 	}
-	if _, err := messageTx.Where(message.RoomID.Eq(deleteGroupReq.ID)).Updates(msg); err != nil {
+	if _, err := messageTx.Where(message.RoomID.Eq(roomGroupR.ID)).Updates(msg); err != nil {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 			return
