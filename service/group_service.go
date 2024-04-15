@@ -91,25 +91,6 @@ func CreateGroupService(c *gin.Context) {
 		return
 	}
 
-	// 创建会话表
-	contactTx := tx.Contact.WithContext(ctx)
-	newContact := model.Contact{
-		UID:        uid,
-		RoomID:     newRoom.ID,
-		ReadTime:   time.Now(),
-		ActiveTime: time.Now(),
-	}
-	if err := contactTx.Create(&newContact); err != nil {
-		if err := tx.Rollback(); err != nil {
-			global.Logger.Errorf("事务回滚失败 %s", err.Error())
-			return
-		}
-		resp.ErrorResponse(c, "创建群聊失败")
-		c.Abort()
-		global.Logger.Errorf("添加会话表失败 %s", err.Error())
-		return
-	}
-
 	groupMemberTx := tx.GroupMember.WithContext(ctx)
 	newGroupMember := model.GroupMember{
 		UID:     uid,
@@ -148,6 +129,26 @@ func CreateGroupService(c *gin.Context) {
 
 	}
 	global.Bus.Publish(enum.NewMessageEvent, newMessage)
+
+	// 创建会话表
+	contactTx := tx.Contact.WithContext(ctx)
+	newContact := model.Contact{
+		UID:        uid,
+		RoomID:     newRoom.ID,
+		ReadTime:   time.Now(),
+		ActiveTime: time.Now(),
+		LastMsgID:  newMessage.ID,
+	}
+	if err := contactTx.Create(&newContact); err != nil {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
+			return
+		}
+		resp.ErrorResponse(c, "创建群聊失败")
+		c.Abort()
+		global.Logger.Errorf("添加会话表失败 %s", err.Error())
+		return
+	}
 
 	resp.SuccessResponseWithMsg(c, "success")
 	return
