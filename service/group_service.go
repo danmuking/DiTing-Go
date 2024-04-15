@@ -8,6 +8,7 @@ import (
 	"DiTing-Go/pkg/resp"
 	"context"
 	"github.com/gin-gonic/gin"
+	"time"
 )
 
 // CreateGroupService 创建群聊
@@ -93,8 +94,10 @@ func CreateGroupService(c *gin.Context) {
 	// 创建会话表
 	contactTx := tx.Contact.WithContext(ctx)
 	newContact := model.Contact{
-		UID:    uid,
-		RoomID: newRoom.ID,
+		UID:        uid,
+		RoomID:     newRoom.ID,
+		ReadTime:   time.Now(),
+		ActiveTime: time.Now(),
 	}
 	if err := contactTx.Create(&newContact); err != nil {
 		if err := tx.Rollback(); err != nil {
