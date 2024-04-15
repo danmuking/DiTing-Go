@@ -8,6 +8,7 @@ import (
 	"DiTing-Go/pkg/resp"
 	"context"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"time"
 )
 
@@ -426,6 +427,90 @@ func JoinGroupService(c *gin.Context) {
 	}
 	global.Bus.Publish(enum.NewMessageEvent, newMessage)
 
+	resp.SuccessResponseWithMsg(c, "success")
+	return
+}
+
+// QuitGroupService 退出群聊
+//
+//	@Summary	退出群聊
+//	@Produce	json
+//	@Param		id	body		int					true	"房间id"
+//	@Success	200	{object}	resp.ResponseData	"成功"
+//	@Failure	500	{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/group/create [post]
+func QuitGroupService(c *gin.Context) {
+	uid := c.GetInt64("uid")
+	quitGroupReq := req.QuitGroupReq{}
+	if err := c.ShouldBind(&quitGroupReq); err != nil {
+		resp.ErrorResponse(c, "参数错误")
+		global.Logger.Errorf("参数错误: %v", err)
+		c.Abort()
+		return
+	}
+
+	ctx := context.Background()
+	tx := global.Query.Begin()
+	// 群聊是否存在
+	room := global.Query.Room
+	roomTx := tx.Room.WithContext(ctx)
+	_, err := roomTx.Where(room.ID.Eq(quitGroupReq.ID)).First()
+	if err != nil {
+		if err.Error() != gorm.ErrRecordNotFound.Error() {
+			global.Logger.Errorf("查询房间失败 %s", err)
+		}
+		resp.ErrorResponse(c, "群聊不存在")
+		c.Abort()
+		return
+	}
+	// 用户是否在群聊中
+	groupMember := global.Query.GroupMember
+	groupMemberTx := tx.GroupMember.WithContext(ctx)
+	_, err = groupMemberTx.Where(groupMember.UID.Eq(uid), groupMember.GroupID.Eq(quitGroupReq.ID)).First()
+	if err != nil {
+		if err.Error() == gorm.ErrRecordNotFound.Error() {
+			resp.ErrorResponse(c, "未加入群聊")
+			c.Abort()
+			return
+		}
+		resp.ErrorResponse(c, "退出群聊失败")
+		global.Logger.Errorf("查询群组成员表失败 %s", err)
+		c.Abort()
+		return
+	}
+	// 删除会话表
+	contact := global.Query.Contact
+	contactTx := tx.Contact.WithContext(ctx)
+	if _, err := contactTx.Where(contact.UID.Eq(uid), contact.RoomID.Eq(quitGroupReq.ID)).Delete(); err != nil {
+		resp.ErrorResponse(c, "退出群聊失败")
+		global.Logger.Errorf("删除会话表失败 %s", err)
+		c.Abort()
+		return
+	}
+	// 删除群组成员表
+	// 查询群组
+	roomGroup := global.Query.RoomGroup
+	roomGroupTx := tx.RoomGroup.WithContext(ctx)
+	roomGroupR, err := roomGroupTx.Where(roomGroup.RoomID.Eq(quitGroupReq.ID)).First()
+	if err != nil {
+		resp.ErrorResponse(c, "退出群聊失败")
+		global.Logger.Errorf("查询群聊失败 %s", err)
+		c.Abort()
+		return
+	}
+	if _, err := groupMemberTx.Where(groupMember.UID.Eq(uid), groupMember.GroupID.Eq(roomGroupR.ID)).Delete(); err != nil {
+		resp.ErrorResponse(c, "退出群聊失败")
+		global.Logger.Errorf("删除群组成员表失败 %s", err)
+		c.Abort()
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		global.Logger.Errorf("事务提交失败 %s", err)
+		resp.ErrorResponse(c, "退出群聊失败")
+		c.Abort()
+		return
+	}
 	resp.SuccessResponseWithMsg(c, "success")
 	return
 }

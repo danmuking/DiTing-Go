@@ -68,6 +68,7 @@ func initGin() {
 		apiGroup.POST("/create", service.CreateGroupService)
 		apiGroup.DELETE("/:id", service.DeleteGroupService)
 		apiGroup.POST("/join", service.JoinGroupService)
+		apiGroup.POST("/quit", service.QuitGroupService)
 	}
 
 	apiContact := router.Group("/api/contact")
