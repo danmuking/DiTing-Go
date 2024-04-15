@@ -124,6 +124,27 @@ func CreateGroupService(c *gin.Context) {
 		global.Logger.Errorf("添加群组成员表失败 %s", err.Error())
 		return
 	}
+	// 自动发送一条消息
+	messageTx := tx.Message.WithContext(ctx)
+	newMessage := model.Message{
+		FromUID: uid,
+		RoomID:  newRoom.ID,
+		Type:    enum.TextMessageType,
+		Content: "欢迎加入群聊",
+		Extra:   "{}",
+	}
+	if err := messageTx.Create(&newMessage); err != nil {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
+			return
+		}
+		resp.ErrorResponse(c, "创建群聊失败")
+		c.Abort()
+		global.Logger.Errorf("添加消息表失败 %s", err.Error())
+		return
+
+	}
+	global.Bus.Publish(enum.NewMessageEvent, newMessage)
 
 	resp.SuccessResponseWithMsg(c, "success")
 	return
