@@ -82,6 +82,7 @@ func getContactDto(contact model.Contact) (*dto.ContactDto, error) {
 		global.Logger.Errorf("查询房间失败 %s", err)
 		return nil, err
 	}
+	contactDto.RoomID = roomR.ID
 	// 如果是个人会话，名称是对方的昵称
 	if roomR.Type == enum.PERSONAL {
 		// 查询好友房间信息

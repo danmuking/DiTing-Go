@@ -123,6 +123,7 @@ func GetPreSigned(c *gin.Context) {
 	}
 
 	global.Bus.Publish(enum.NewMessageEvent, newMsg)
+
 	resp.SuccessResponse(c, preSignedResp)
 	return
 }

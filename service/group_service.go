@@ -31,12 +31,7 @@ func CreateGroupService(c *gin.Context) {
 
 	tx := global.Query.Begin()
 	defer func() {
-		if err := tx.Commit(); err != nil {
-			global.Logger.Errorf("事务提交失败 %s", err.Error())
-			resp.ErrorResponse(c, "创建群聊失败")
-			c.Abort()
-			return
-		}
+
 	}()
 	ctx := context.Background()
 	// 创建房间表
@@ -128,7 +123,6 @@ func CreateGroupService(c *gin.Context) {
 		return
 
 	}
-	global.Bus.Publish(enum.NewMessageEvent, newMessage)
 
 	// 创建会话表
 	contactTx := tx.Contact.WithContext(ctx)
@@ -149,6 +143,15 @@ func CreateGroupService(c *gin.Context) {
 		global.Logger.Errorf("添加会话表失败 %s", err.Error())
 		return
 	}
+
+	if err := tx.Commit(); err != nil {
+		global.Logger.Errorf("事务提交失败 %s", err.Error())
+		resp.ErrorResponse(c, "创建群聊失败")
+		c.Abort()
+		return
+	}
+
+	global.Bus.Publish(enum.NewMessageEvent, newMessage)
 
 	resp.SuccessResponseWithMsg(c, "success")
 	return
@@ -174,12 +177,7 @@ func DeleteGroupService(c *gin.Context) {
 
 	tx := global.Query.Begin()
 	defer func() {
-		if err := tx.Commit(); err != nil {
-			global.Logger.Errorf("事务提交失败 %s", err.Error())
-			resp.ErrorResponse(c, "删除群聊失败")
-			c.Abort()
-			return
-		}
+
 	}()
 	ctx := context.Background()
 	// 查询群聊id
@@ -294,7 +292,12 @@ func DeleteGroupService(c *gin.Context) {
 		return
 	}
 	// TODO: 删除群聊仅禁止发送新消息，不删除消息
-
+	if err := tx.Commit(); err != nil {
+		global.Logger.Errorf("事务提交失败 %s", err.Error())
+		resp.ErrorResponse(c, "删除群聊失败")
+		c.Abort()
+		return
+	}
 	resp.SuccessResponseWithMsg(c, "success")
 	return
 }
@@ -362,14 +365,6 @@ func JoinGroupService(c *gin.Context) {
 
 	// 加入群聊
 	tx := global.Query.Begin()
-	defer func() {
-		if err := tx.Commit(); err != nil {
-			global.Logger.Errorf("事务提交失败 %s", err.Error())
-			resp.ErrorResponse(c, "加入群聊失败")
-			c.Abort()
-			return
-		}
-	}()
 	groupMemberTx := tx.GroupMember.WithContext(ctx)
 	newGroupMember := model.GroupMember{
 		UID:     uid,
@@ -421,6 +416,12 @@ func JoinGroupService(c *gin.Context) {
 		resp.ErrorResponse(c, "加入群聊失败")
 		c.Abort()
 		global.Logger.Errorf("添加消息表失败 %s", err.Error())
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		global.Logger.Errorf("事务提交失败 %s", err.Error())
+		resp.ErrorResponse(c, "加入群聊失败")
+		c.Abort()
 		return
 	}
 	global.Bus.Publish(enum.NewMessageEvent, newMessage)

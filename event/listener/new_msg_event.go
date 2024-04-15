@@ -96,5 +96,6 @@ func NewMsgEvent(msg model.Message) {
 			service.Send(groupMember.UID)
 		}
 	}
+	return
 
 }

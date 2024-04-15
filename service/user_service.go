@@ -176,6 +176,7 @@ func ApplyFriend(c *gin.Context) {
 		Status:     enum.NO,
 		ReadStatus: enum.NO,
 	})
+
 	resp.SuccessResponseWithMsg(c, "success")
 	return
 }

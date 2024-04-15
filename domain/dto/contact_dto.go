@@ -5,7 +5,10 @@ import (
 )
 
 type ContactDto struct {
-	ID int64 `json:"ID"`
+	// 会话ID
+	ID int64 `json:"id"`
+	// 房间ID
+	RoomID int64 `json:"room_id"`
 	// 头像
 	Avatar string `json:"avatar"`
 	// 会话名称
