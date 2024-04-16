@@ -2,13 +2,18 @@ package service
 
 import (
 	"DiTing-Go/dal/model"
+	"DiTing-Go/domain/dto"
 	"DiTing-Go/domain/enum"
 	"DiTing-Go/domain/vo/req"
 	"DiTing-Go/global"
+	"DiTing-Go/pkg/cursor"
 	"DiTing-Go/pkg/resp"
 	"context"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -513,4 +518,118 @@ func QuitGroupService(c *gin.Context) {
 	}
 	resp.SuccessResponseWithMsg(c, "success")
 	return
+}
+
+// GetGroupMemberListService 退出群聊
+//
+//	@Summary	退出群聊
+//	@Produce	json
+//	@Param		id	body		int					true	"房间id"
+//	@Success	200	{object}	resp.ResponseData	"成功"
+//	@Failure	500	{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/group/getGroupMemberList [get]
+func GetGroupMemberListService(c *gin.Context) {
+	uid := c.GetInt64("uid")
+	getGroupMemberListReq := req.GetGroupMemberListReq{}
+	if err := c.ShouldBindQuery(&getGroupMemberListReq); err != nil {
+		resp.ErrorResponse(c, "参数错误")
+		global.Logger.Errorf("参数错误: %v", err)
+		c.Abort()
+		return
+	}
+	ctx := context.Background()
+
+	// 查询房间表
+	room := global.Query.Room
+	roomQ := room.WithContext(ctx)
+	roomR, err := roomQ.Where(room.ID.Eq(getGroupMemberListReq.ID)).First()
+	if err != nil {
+		resp.ErrorResponse(c, "查询群聊失败")
+		global.Logger.Errorf("查询房间失败 %s", err)
+		c.Abort()
+		return
+	}
+	// 查询群聊表
+	roomGroup := global.Query.RoomGroup
+	roomGroupQ := roomGroup.WithContext(ctx)
+	roomGroupR, err := roomGroupQ.Where(roomGroup.RoomID.Eq(roomR.ID)).First()
+	if err != nil {
+		resp.ErrorResponse(c, "查询群聊失败")
+		global.Logger.Errorf("查询群聊失败 %s", err)
+		c.Abort()
+		return
+	}
+
+	// 查询用户是否在群聊中
+	groupMember := global.Query.GroupMember
+	groupMemberQ := groupMember.WithContext(ctx)
+	_, err = groupMemberQ.Where(groupMember.UID.Eq(uid), groupMember.GroupID.Eq(roomGroupR.ID)).First()
+	if err != nil {
+		resp.ErrorResponse(c, "查询群聊失败")
+		global.Logger.Errorf("查询群组成员表失败 %s", err)
+		c.Abort()
+		return
+	}
+
+	// 分页查询
+	// 默认值
+	// 划分游标，status_activateTime
+	var userR []dto.GetGroupMemberDto
+	status, activeTime := cursorSplit(getGroupMemberListReq.Cursor)
+	// 查询群组成员表,联表游标翻页
+	user := global.Query.User
+	userQ := user.WithContext(ctx)
+	if err := userQ.Select(user.Name, user.Avatar, user.ActiveStatus, user.LastOptTime).LeftJoin(groupMemberQ, user.ID.EqCol(groupMember.UID)).Where(groupMember.GroupID.Eq(roomGroupR.ID), user.ActiveStatus.Eq(int32(status)), user.LastOptTime.Gt(activeTime)).Limit(getGroupMemberListReq.PageSize).Scan(&userR); err != nil {
+		resp.ErrorResponse(c, "查询群聊失败")
+		global.Logger.Errorf("查询群组成员表失败 %s", err)
+		c.Abort()
+		return
+	}
+	// 不足，用不在线的补充
+	if len(userR) < getGroupMemberListReq.PageSize && status == 1 {
+		var add []dto.GetGroupMemberDto
+		if err := userQ.Select(user.Name, user.Avatar, user.ActiveStatus, user.LastOptTime).LeftJoin(groupMemberQ, user.ID.EqCol(groupMember.UID)).Where(groupMember.GroupID.Eq(roomGroupR.ID), user.ActiveStatus.Eq(2)).Limit(getGroupMemberListReq.PageSize - len(userR)).Scan(&add); err != nil {
+			resp.ErrorResponse(c, "查询群聊失败")
+			global.Logger.Errorf("查询群组成员表失败 %s", err)
+			c.Abort()
+			return
+		}
+		userR = append(userR, add...)
+	}
+
+	newCursor := genCursor(userR)
+	resp.SuccessResponse(c, cursor.PageResp{
+		Cursor: &newCursor,
+		IsLast: len(userR) < getGroupMemberListReq.PageSize,
+		Data:   userR,
+	})
+}
+
+// 分割游标
+func cursorSplit(cursor *string) (int, time.Time) {
+	if cursor == nil {
+		return 1, time.Time{}
+	}
+	// TODO： 抽取为常量
+	lines := strings.Split(*cursor, "_")
+	status, err := strconv.Atoi(lines[0])
+	if err != nil {
+		return 1, time.Time{}
+	}
+	timeUnix, err := strconv.ParseInt(lines[1], 10, 64)
+	if err != nil {
+		return 1, time.Time{}
+	}
+	activeTime := time.Unix(timeUnix, timeUnix%1000000000)
+	return status, activeTime
+}
+
+func genCursor(users []dto.GetGroupMemberDto) string {
+	if users == nil || len(users) == 0 {
+		return fmt.Sprintf("%d_%d", 2, time.Now().Unix())
+	}
+	status := users[len(users)-1].ActiveStatus
+	activeTime := users[len(users)-1].LastOptTime
+	newCursor := fmt.Sprintf("%d_%d", status, activeTime.Unix())
+	return newCursor
 }
