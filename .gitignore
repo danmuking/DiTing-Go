@@ -21,9 +21,8 @@
 # Go workspace file
 go.work
 *.yml
-*.sql
 *.yaml
-/sql/
+*.log
 /conf/config.yml
 !/conf/config_example.yml
 !/.github/workflows/reademe-contributors.yml
