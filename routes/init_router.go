@@ -71,6 +71,7 @@ func initGin() {
 		apiGroup.POST("/quit", service.QuitGroupService)
 		apiGroup.GET("/getGroupMemberList", service.GetGroupMemberListService)
 		apiGroup.POST("/grantAdministrator", service.GrantAdministratorService)
+		apiGroup.POST("/removeAdministrator", service.RemoveAdministratorService)
 	}
 
 	apiContact := router.Group("/api/contact")
