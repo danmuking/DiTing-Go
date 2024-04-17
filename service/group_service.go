@@ -605,6 +605,78 @@ func GetGroupMemberListService(c *gin.Context) {
 	})
 }
 
+// GrantAdministratorService 授予管理员权限
+//
+//	@Summary	授予管理员权限
+//	@Produce	json
+//	@Param		room_id	body		int					true	"房间id"
+//	@Param		grant_uid	body		int					true	"授权用户id"
+//	@Success	200	{object}	resp.ResponseData	"成功"
+//	@Failure	500	{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/group/getGroupMemberList [get]
+func GrantAdministratorService(c *gin.Context) {
+	uid := c.GetInt64("uid")
+	grantAdministratorReq := req.GrantAdministratorReq{}
+	if err := c.ShouldBind(&grantAdministratorReq); err != nil {
+		resp.ErrorResponse(c, "参数错误")
+		global.Logger.Errorf("参数错误: %v", err)
+		c.Abort()
+		return
+	}
+	ctx := context.Background()
+	// 检查用户是否为群主
+	roomGroup := global.Query.RoomGroup
+	roomGroupQ := roomGroup.WithContext(ctx)
+	roomGroupR, err := roomGroupQ.Where(roomGroup.RoomID.Eq(grantAdministratorReq.RoomId)).First()
+	if err != nil {
+		resp.ErrorResponse(c, "授权失败")
+		global.Logger.Errorf("查询群聊失败 %s", err)
+		c.Abort()
+		return
+	}
+	groupMember := global.Query.GroupMember
+	groupMemberQ := groupMember.WithContext(ctx)
+	groupMemberR, err := groupMemberQ.Where(groupMember.UID.Eq(uid), groupMember.GroupID.Eq(roomGroupR.ID)).First()
+	if err != nil {
+		global.Logger.Errorf("查询群组成员表失败 %s", err)
+		resp.ErrorResponse(c, "授权失败")
+		c.Abort()
+		return
+	}
+	if groupMemberR.Role != 1 {
+		resp.ErrorResponse(c, "授权失败,权限不足")
+		c.Abort()
+		return
+	}
+
+	// 检查授权用户是否在群聊中
+	groupMemberR, err = groupMemberQ.Where(groupMember.UID.Eq(grantAdministratorReq.GrantUid), groupMember.GroupID.Eq(roomGroupR.ID)).First()
+	if err != nil {
+		resp.ErrorResponse(c, "授权失败，用户不在群聊中")
+		global.Logger.Errorf("查询群组成员表失败 %s", err)
+		c.Abort()
+		return
+	}
+	// 如果用户是不是普通用户
+	if groupMemberR.Role != 3 {
+		resp.ErrorResponse(c, "授权失败")
+		c.Abort()
+		return
+	}
+	// 授权
+	groupMemberR.Role = 2
+	groupMemberR.UpdateTime = time.Now()
+	if _, err := groupMemberQ.Where(groupMember.ID.Eq(groupMemberR.ID)).Updates(groupMemberR); err != nil {
+		resp.ErrorResponse(c, "授权失败")
+		global.Logger.Errorf("更新群组成员表失败 %s", err)
+		c.Abort()
+		return
+	}
+
+	resp.SuccessResponseWithMsg(c, "success")
+	return
+}
+
 // 分割游标
 func cursorSplit(cursor *string) (int, time.Time) {
 	if cursor == nil {
@@ -624,6 +696,7 @@ func cursorSplit(cursor *string) (int, time.Time) {
 	return status, activeTime
 }
 
+// 生成游标
 func genCursor(users []dto.GetGroupMemberDto) string {
 	if users == nil || len(users) == 0 {
 		return fmt.Sprintf("%d_%d", 2, time.Now().Unix())
