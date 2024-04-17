@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"DiTing-Go/controller"
 	_ "DiTing-Go/docs"
 	"DiTing-Go/pkg/middleware"
 	"DiTing-Go/pkg/resp"
@@ -36,7 +37,7 @@ func initGin() {
 	apiPublic := router.Group("/api/public")
 	{
 		//获取标签列表
-		apiPublic.POST("/register", service.Register)
+		apiPublic.POST("/register", controller.RegisterController)
 		//新建标签
 		apiPublic.POST("/login", service.Login)
 	}

@@ -18,44 +18,56 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/goccy/go-json"
 	"github.com/jinzhu/copier"
+	"github.com/pkg/errors"
+	"gorm.io/gorm"
 	"io"
 	"log"
 	"sort"
 	"strconv"
+	"time"
 )
 
 var q *query.Query = global.Query
 
-// Register 用户注册
-//
-//	@Summary	用户注册
-//	@Produce	json
-//	@Param		name		body		string				true	"用户名"
-//	@Param		password	body		string				true	"密码"
-//	@Success	200			{object}	resp.ResponseData	"成功"
-//	@Failure	500			{object}	resp.ResponseData	"内部错误"
-//	@Router		/api/public/register [post]
-func Register(c *gin.Context) {
-	user := model.User{}
-	if err := c.ShouldBind(&user); err != nil { //ShouldBind()会自动推导
-		resp.ErrorResponse(c, "参数错误")
+// RegisterService 用户注册
+func RegisterService(c *gin.Context, userReq req.UserRegisterReq) {
+	ctx := context.Background()
+	user := global.Query.User
+	userQ := user.WithContext(ctx)
+	// 用户名是否已存在
+	userR, err := userQ.Where(user.Name.Eq(userReq.Name)).First()
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		// 如果不是ErrRecordNotFound，说明查询失败
+		resp.ErrorResponse(c, "系统繁忙，请稍后再试~")
+		global.Logger.Errorf("查询用户表失败 %v", err)
 		c.Abort()
 		return
 	}
-
-	u := query.User
-	// 用户名是否已存在
-	exist, _ := u.WithContext(context.Background()).Where(u.Name.Eq(user.Name)).First()
-	if exist != nil {
+	// 查到了
+	if userR != nil {
+		// 添加到redis
+		userByte, err := json.Marshal(userR)
+		if err = global.Rdb.Set(domainEnum.User+strconv.FormatInt(userR.ID, 10), userByte, time.Hour).Err(); err != nil {
+			resp.ErrorResponse(c, "系统繁忙，请稍后再试~")
+			global.Logger.Errorf("插入redis失败 %v", err)
+			c.Abort()
+			return
+		}
+		// 如果查到了，说明用户名已存在
 		resp.ErrorResponse(c, "用户名已存在")
 		c.Abort()
 		return
 	}
-
+	// 创建用户
+	newUser := model.User{
+		Name:     userReq.Name,
+		Password: userReq.Password,
+		IPInfo:   "{}",
+	}
 	// 创建对象
-	err := u.WithContext(context.Background()).Omit(u.OpenID).Create(&user)
-	if err != nil {
-		resp.ErrorResponse(c, "系统正忙请稍后再试~")
+	if err := userQ.Omit(user.OpenID).Create(&newUser); err != nil {
+		resp.ErrorResponse(c, "注册失败~")
+		global.Logger.Errorf("插入用户表失败, err: %v", err)
 		c.Abort()
 		return
 	}
