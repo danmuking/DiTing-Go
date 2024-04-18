@@ -6,6 +6,7 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/goccy/go-json"
 	"github.com/pkg/errors"
+	"gorm.io/gorm"
 )
 
 // SetString 设置字符串
@@ -55,7 +56,9 @@ func QueryAndSet(cacheKey string, dbQueryFunc func() (interface{}, error)) (any,
 	// 2. 从数据库中获取数据
 	value, err := dbQueryFunc()
 	if err != nil {
-		global.Logger.Errorf("查询数据库失败: %v", err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			global.Logger.Errorf("查询数据库失败: %v", err)
+		}
 		return nil, err
 	}
 	// 3. 将查询结果写回缓存

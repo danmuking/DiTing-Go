@@ -9,7 +9,6 @@ import (
 	resp2 "DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
 	cursorUtils "DiTing-Go/pkg/cursor"
-	"DiTing-Go/pkg/e"
 	"DiTing-Go/pkg/enum"
 	"DiTing-Go/pkg/resp"
 	_ "DiTing-Go/pkg/setting"
@@ -30,7 +29,6 @@ import (
 var q *query.Query = global.Query
 
 // RegisterService 用户注册
-// TODO:缓存是否有更好的实现方式
 func RegisterService(c *gin.Context, userReq req.UserRegisterReq) resp.ResponseData {
 	ctx := context.Background()
 	user := global.Query.User
@@ -41,20 +39,12 @@ func RegisterService(c *gin.Context, userReq req.UserRegisterReq) resp.ResponseD
 	_, err := utils.QueryAndSet(domainEnum.User+userReq.Name, fun)
 	// 查到了
 	if err == nil {
-		return resp.ResponseData{
-			Code:    e.ERROR,
-			Message: "用户名已存在",
-			Data:    nil,
-		}
+		return resp.ErrorResponseData("用户已存在")
 	}
 	// 有error
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		global.Logger.Errorf("查询数据失败: %v", err)
-		return resp.ResponseData{
-			Code:    e.ERROR,
-			Message: "系统繁忙，请稍后再试~",
-			Data:    nil,
-		}
+		return resp.ErrorResponseData("系统繁忙，请稍后再试~")
 	}
 	// 创建用户
 	newUser := model.User{
@@ -64,17 +54,9 @@ func RegisterService(c *gin.Context, userReq req.UserRegisterReq) resp.ResponseD
 	}
 	// 创建对象
 	if err := userQ.Omit(user.OpenID).Create(&newUser); err != nil {
-		return resp.ResponseData{
-			Code:    e.ERROR,
-			Message: "系统繁忙，请稍后再试~",
-			Data:    nil,
-		}
+		return resp.ErrorResponseData("系统繁忙，请稍后再试~")
 	}
-	return resp.ResponseData{
-		Code:    e.SUCCESS,
-		Message: "注册成功",
-		Data:    nil,
-	}
+	return resp.SuccessResponseDataWithMsg("success")
 }
 
 // LoginService 用户登录

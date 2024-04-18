@@ -50,3 +50,30 @@ func SuccessResponseWithMsg(c *gin.Context, msg string) {
 func ReturnResponse(c *gin.Context, response ResponseData) {
 	c.JSON(e.SUCCESS, response)
 }
+
+// ErrorResponseData 是一个辅助函数，用于创建错误响应
+func ErrorResponseData(msg string) ResponseData {
+	return ResponseData{
+		Code:    e.ERROR,
+		Message: msg,
+		Data:    nil,
+	}
+}
+
+// SuccessResponseData 是一个辅助函数，用于创建成功响应
+func SuccessResponseData(data interface{}) ResponseData {
+	return ResponseData{
+		Code:    e.SUCCESS,
+		Message: "success",
+		Data:    data,
+	}
+}
+
+// SuccessResponseDataWithMsg 是一个辅助函数，用于创建成功响应
+func SuccessResponseDataWithMsg(msg string) ResponseData {
+	return ResponseData{
+		Code:    e.SUCCESS,
+		Message: msg,
+		Data:    nil,
+	}
+}
