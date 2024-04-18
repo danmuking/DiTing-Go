@@ -1,6 +1,9 @@
 package enum
 
+import "time"
+
 const (
-	Project = "diting:"
-	User    = Project + "user:"
+	CacheTime = 7 * 24 * time.Hour
+	Project   = "diting:"
+	User      = Project + "user:"
 )

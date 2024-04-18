@@ -24,12 +24,12 @@ import (
 	"log"
 	"sort"
 	"strconv"
-	"time"
 )
 
 var q *query.Query = global.Query
 
 // RegisterService 用户注册
+// TODO:缓存是否有更好的实现方式
 func RegisterService(c *gin.Context, userReq req.UserRegisterReq) {
 	ctx := context.Background()
 	user := global.Query.User
@@ -46,8 +46,7 @@ func RegisterService(c *gin.Context, userReq req.UserRegisterReq) {
 	// 查到了
 	if userR != nil {
 		// 添加到redis
-		userByte, err := json.Marshal(userR)
-		if err = global.Rdb.Set(domainEnum.User+strconv.FormatInt(userR.ID, 10), userByte, time.Hour).Err(); err != nil {
+		if err := utils.SetString(domainEnum.User+strconv.FormatInt(userR.ID, 10), userR); err != nil {
 			resp.ErrorResponse(c, "系统繁忙，请稍后再试~")
 			global.Logger.Errorf("插入redis失败 %v", err)
 			c.Abort()
