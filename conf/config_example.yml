@@ -13,3 +13,6 @@ minio:
   accessSecret: xxx
   endPoint: xxx.xxx.xxx.xxx:9000
   useSSL: false
+redis:
+  host: xxxx
+  password: xxxxx
