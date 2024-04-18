@@ -47,3 +47,6 @@ func SuccessResponseWithMsg(c *gin.Context, msg string) {
 		Data:    nil,
 	})
 }
+func ReturnResponse(c *gin.Context, response ResponseData) {
+	c.JSON(e.SUCCESS, response)
+}

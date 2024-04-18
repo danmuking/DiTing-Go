@@ -2,6 +2,7 @@ package controller
 
 import (
 	"DiTing-Go/domain/vo/req"
+	"DiTing-Go/pkg/e"
 	"DiTing-Go/pkg/resp"
 	"DiTing-Go/service"
 	"github.com/gin-gonic/gin"
@@ -23,7 +24,11 @@ func RegisterController(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	service.RegisterService(c, userReq)
+	response := service.RegisterService(c, userReq)
+	if response.Code == e.ERROR {
+		c.Abort()
+	}
+	resp.ReturnResponse(c, response)
 }
 
 // LoginController 用户登录

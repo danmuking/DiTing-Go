@@ -17,16 +17,51 @@ func SetString(key string, value any) error {
 	return nil
 }
 
-func GetString(key string, value any) error {
+// GetString 获取字符串
+func GetString(key string) (any, error) {
 	valueByte, err := global.Rdb.Get(key).Result()
 	if err != nil && errors.Is(err, redis.Nil) {
-		return err
+		return nil, err
 	} else if err != nil {
-		return errors.New("redis get error")
+		return nil, errors.New("redis get error")
 	}
-	err = json.Unmarshal([]byte(valueByte), value)
+	var value any
+	err = json.Unmarshal([]byte(valueByte), &value)
 	if err != nil {
-		return errors.New("json unmarshal error")
+		return nil, errors.New("json unmarshal error")
 	}
-	return nil
+	return value, nil
+}
+
+// GetData 获取数据
+func GetData(cacheKey string, dbQueryFunc func() (interface{}, error)) (any, error) {
+	// 1. 从缓存中获取数据
+	value, err := GetString(cacheKey)
+	// 查询到数据
+	if err == nil {
+		return value, nil
+	} else if !errors.Is(err, redis.Nil) {
+		return nil, err
+	}
+	value, err = QueryAndSet(cacheKey, dbQueryFunc)
+	if err != nil {
+		return nil, err
+	}
+	return value, nil
+}
+
+// QueryAndSet 查询数据库并设置缓存
+func QueryAndSet(cacheKey string, dbQueryFunc func() (interface{}, error)) (any, error) {
+	// 2. 从数据库中获取数据
+	value, err := dbQueryFunc()
+	if err != nil {
+		global.Logger.Errorf("查询数据库失败: %v", err)
+		return nil, err
+	}
+	// 3. 将查询结果写回缓存
+	if err = SetString(cacheKey, value); err != nil {
+		global.Logger.Errorf("写入redis失败: %v", err)
+		return nil, err
+	}
+	return value, err
 }

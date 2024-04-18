@@ -9,6 +9,7 @@ import (
 	resp2 "DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
 	cursorUtils "DiTing-Go/pkg/cursor"
+	"DiTing-Go/pkg/e"
 	"DiTing-Go/pkg/enum"
 	"DiTing-Go/pkg/resp"
 	_ "DiTing-Go/pkg/setting"
@@ -30,32 +31,30 @@ var q *query.Query = global.Query
 
 // RegisterService 用户注册
 // TODO:缓存是否有更好的实现方式
-func RegisterService(c *gin.Context, userReq req.UserRegisterReq) {
+func RegisterService(c *gin.Context, userReq req.UserRegisterReq) resp.ResponseData {
 	ctx := context.Background()
 	user := global.Query.User
 	userQ := user.WithContext(ctx)
-	// 用户名是否已存在
-	userR, err := userQ.Where(user.Name.Eq(userReq.Name)).First()
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		// 如果不是ErrRecordNotFound，说明查询失败
-		resp.ErrorResponse(c, "系统繁忙，请稍后再试~")
-		global.Logger.Errorf("查询用户表失败 %v", err)
-		c.Abort()
-		return
+	fun := func() (interface{}, error) {
+		return userQ.Where(user.Name.Eq(userReq.Name)).First()
 	}
+	_, err := utils.QueryAndSet(domainEnum.User+userReq.Name, fun)
 	// 查到了
-	if userR != nil {
-		// 添加到redis
-		if err := utils.SetString(domainEnum.User+strconv.FormatInt(userR.ID, 10), userR); err != nil {
-			resp.ErrorResponse(c, "系统繁忙，请稍后再试~")
-			global.Logger.Errorf("插入redis失败 %v", err)
-			c.Abort()
-			return
+	if err == nil {
+		return resp.ResponseData{
+			Code:    e.ERROR,
+			Message: "用户名已存在",
+			Data:    nil,
 		}
-		// 如果查到了，说明用户名已存在
-		resp.ErrorResponse(c, "用户名已存在")
-		c.Abort()
-		return
+	}
+	// 有error
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		global.Logger.Errorf("查询数据失败: %v", err)
+		return resp.ResponseData{
+			Code:    e.ERROR,
+			Message: "系统繁忙，请稍后再试~",
+			Data:    nil,
+		}
 	}
 	// 创建用户
 	newUser := model.User{
@@ -65,13 +64,17 @@ func RegisterService(c *gin.Context, userReq req.UserRegisterReq) {
 	}
 	// 创建对象
 	if err := userQ.Omit(user.OpenID).Create(&newUser); err != nil {
-		resp.ErrorResponse(c, "注册失败~")
-		global.Logger.Errorf("插入用户表失败, err: %v", err)
-		c.Abort()
-		return
+		return resp.ResponseData{
+			Code:    e.ERROR,
+			Message: "系统繁忙，请稍后再试~",
+			Data:    nil,
+		}
 	}
-	resp.SuccessResponseWithMsg(c, "注册成功")
-	return
+	return resp.ResponseData{
+		Code:    e.SUCCESS,
+		Message: "注册成功",
+		Data:    nil,
+	}
 }
 
 // LoginService 用户登录
