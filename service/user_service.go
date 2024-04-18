@@ -74,33 +74,35 @@ func RegisterService(c *gin.Context, userReq req.UserRegisterReq) {
 	return
 }
 
-// Login 用户登录
-//
-//	@Summary	用户登录
-//	@Produce	json
-//	@Param		name		body		string				true	"用户名"
-//	@Param		password	body		string				true	"密码"
-//	@Success	200			{object}	resp.ResponseData	"成功"
-//	@Failure	500			{object}	resp.ResponseData	"内部错误"
-//	@Router		/api/public/login [post]
-func Login(c *gin.Context) {
-	login := model.User{}
-	if err := c.ShouldBind(&login); err != nil { //ShouldBind()会自动推导
-		resp.ErrorResponse(c, "参数错误")
-		c.Abort()
-		return
-	}
-
-	u := query.User
+// LoginService 用户登录
+func LoginService(c *gin.Context, loginReq req.UserLoginReq) {
+	ctx := context.Background()
+	user := query.User
+	userQ := user.WithContext(ctx)
+	// 查数据库
 	// 检查密码是否正确
-	user, _ := u.WithContext(context.Background()).Where(u.Name.Eq(login.Name), u.Password.Eq(login.Password)).First()
-	if user == nil {
+	userR, _ := userQ.Where(user.Name.Eq(loginReq.Name), user.Password.Eq(loginReq.Password)).First()
+	if userR == nil {
 		resp.ErrorResponse(c, "用户名或密码错误")
 		c.Abort()
 		return
 	}
+	// 添加到redis
+	if err := utils.SetString(domainEnum.User+strconv.FormatInt(userR.ID, 10), userR); err != nil {
+		resp.ErrorResponse(c, "系统繁忙，请稍后再试~")
+		global.Logger.Errorf("插入redis失败 %v", err)
+		c.Abort()
+		return
+	}
+
 	//生成jwt
-	token, _ := utils.GenerateToken(user.ID)
+	token, err := utils.GenerateToken(userR.ID)
+	if err != nil {
+		resp.ErrorResponse(c, "系统繁忙，请稍后再试~")
+		global.Logger.Errorf("生成jwt失败 %v", err)
+		c.Abort()
+		return
+	}
 	resp.SuccessResponse(c, token)
 }
 

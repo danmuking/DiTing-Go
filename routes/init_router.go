@@ -39,7 +39,7 @@ func initGin() {
 		//获取标签列表
 		apiPublic.POST("/register", controller.RegisterController)
 		//新建标签
-		apiPublic.POST("/login", service.Login)
+		apiPublic.POST("/login", controller.LoginController)
 	}
 
 	apiUser := router.Group("/api/user")
