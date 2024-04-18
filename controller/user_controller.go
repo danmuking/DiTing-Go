@@ -24,7 +24,7 @@ func RegisterController(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	response := service.RegisterService(c, userReq)
+	response := service.RegisterService(userReq)
 	if response.Code == e.ERROR {
 		c.Abort()
 	}
@@ -47,5 +47,9 @@ func LoginController(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	service.LoginService(c, userLogin)
+	response := service.LoginService(userLogin)
+	if response.Code == e.ERROR {
+		c.Abort()
+	}
+	resp.ReturnResponse(c, response)
 }

@@ -29,14 +29,15 @@ import (
 var q *query.Query = global.Query
 
 // RegisterService 用户注册
-func RegisterService(c *gin.Context, userReq req.UserRegisterReq) resp.ResponseData {
+func RegisterService(userReq req.UserRegisterReq) resp.ResponseData {
 	ctx := context.Background()
 	user := global.Query.User
 	userQ := user.WithContext(ctx)
 	fun := func() (interface{}, error) {
 		return userQ.Where(user.Name.Eq(userReq.Name)).First()
 	}
-	_, err := utils.QueryAndSet(domainEnum.User+userReq.Name, fun)
+	userR := model.User{}
+	err := utils.GetData(domainEnum.User+userReq.Name, userR, fun)
 	// 查到了
 	if err == nil {
 		return resp.ErrorResponseData("用户已存在")
@@ -60,35 +61,28 @@ func RegisterService(c *gin.Context, userReq req.UserRegisterReq) resp.ResponseD
 }
 
 // LoginService 用户登录
-func LoginService(c *gin.Context, loginReq req.UserLoginReq) {
+func LoginService(loginReq req.UserLoginReq) resp.ResponseData {
 	ctx := context.Background()
 	user := query.User
 	userQ := user.WithContext(ctx)
 	// 查数据库
 	// 检查密码是否正确
-	userR, _ := userQ.Where(user.Name.Eq(loginReq.Name), user.Password.Eq(loginReq.Password)).First()
-	if userR == nil {
-		resp.ErrorResponse(c, "用户名或密码错误")
-		c.Abort()
-		return
+	fun := func() (interface{}, error) {
+		return userQ.Where(user.Name.Eq(loginReq.Name), user.Password.Eq(loginReq.Password)).First()
 	}
-	// 添加到redis
-	if err := utils.SetString(domainEnum.User+strconv.FormatInt(userR.ID, 10), userR); err != nil {
-		resp.ErrorResponse(c, "系统繁忙，请稍后再试~")
-		global.Logger.Errorf("插入redis失败 %v", err)
-		c.Abort()
-		return
+	userR := model.User{}
+	err := utils.GetData(domainEnum.User+loginReq.Name, &userR, fun)
+	if err != nil {
+		global.Logger.Errorf("查询数据失败: %v", err)
+		return resp.ErrorResponseData("系统繁忙，请稍后再试~")
 	}
-
 	//生成jwt
 	token, err := utils.GenerateToken(userR.ID)
 	if err != nil {
-		resp.ErrorResponse(c, "系统繁忙，请稍后再试~")
 		global.Logger.Errorf("生成jwt失败 %v", err)
-		c.Abort()
-		return
+		return resp.ErrorResponseData("系统繁忙，请稍后再试~")
 	}
-	resp.SuccessResponse(c, token)
+	return resp.SuccessResponseData(token)
 }
 
 // ApplyFriend 添加好友

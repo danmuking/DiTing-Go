@@ -5,6 +5,7 @@ import (
 	"DiTing-Go/global"
 	"github.com/go-redis/redis"
 	"github.com/goccy/go-json"
+	"github.com/jinzhu/copier"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
 )
@@ -19,52 +20,52 @@ func SetString(key string, value any) error {
 }
 
 // GetString 获取字符串
-func GetString(key string) (any, error) {
+func GetString(key string, value any) error {
 	valueByte, err := global.Rdb.Get(key).Result()
 	if err != nil && errors.Is(err, redis.Nil) {
-		return nil, err
+		return err
 	} else if err != nil {
-		return nil, errors.New("redis get error")
+		return errors.New("redis get error")
 	}
-	var value any
-	err = json.Unmarshal([]byte(valueByte), &value)
+	err = json.Unmarshal([]byte(valueByte), value)
 	if err != nil {
-		return nil, errors.New("json unmarshal error")
+		return errors.New("json unmarshal error")
 	}
-	return value, nil
+	return nil
 }
 
 // GetData 获取数据
-func GetData(cacheKey string, dbQueryFunc func() (interface{}, error)) (any, error) {
+func GetData(cacheKey string, value any, dbQueryFunc func() (interface{}, error)) error {
 	// 1. 从缓存中获取数据
-	value, err := GetString(cacheKey)
+	err := GetString(cacheKey, value)
 	// 查询到数据
 	if err == nil {
-		return value, nil
+		return nil
 	} else if !errors.Is(err, redis.Nil) {
-		return nil, err
+		return nil
 	}
-	value, err = QueryAndSet(cacheKey, dbQueryFunc)
+	err = QueryAndSet(cacheKey, value, dbQueryFunc)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return value, nil
+	return nil
 }
 
 // QueryAndSet 查询数据库并设置缓存
-func QueryAndSet(cacheKey string, dbQueryFunc func() (interface{}, error)) (any, error) {
+func QueryAndSet(cacheKey string, value any, dbQueryFunc func() (interface{}, error)) error {
 	// 2. 从数据库中获取数据
-	value, err := dbQueryFunc()
+	result, err := dbQueryFunc()
+	value = copier.Copy(value, result)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			global.Logger.Errorf("查询数据库失败: %v", err)
 		}
-		return nil, err
+		return err
 	}
 	// 3. 将查询结果写回缓存
 	if err = SetString(cacheKey, value); err != nil {
 		global.Logger.Errorf("写入redis失败: %v", err)
-		return nil, err
+		return err
 	}
-	return value, err
+	return err
 }
