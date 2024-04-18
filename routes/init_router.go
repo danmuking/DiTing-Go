@@ -46,7 +46,7 @@ func initGin() {
 	apiUser.Use(middleware.JWT())
 	{
 		//添加好友
-		apiUser.POST("/add", service.ApplyFriend)
+		apiUser.POST("/add", controller.ApplyFriendController)
 		//删除好友
 		apiUser.DELETE("/delete", service.DeleteFriendService)
 		//获取好友申请列表
@@ -56,7 +56,7 @@ func initGin() {
 		//获取好友列表
 		apiUser.GET("/getFriendList", service.GetFriendList)
 		//判断是否是好友
-		apiUser.GET("/isFriend/:friendUid", service.IsFriend)
+		apiUser.GET("/isFriend/:friendUid", service.IsFriends)
 		//好友申请未读数量
 		apiUser.GET("/unreadApplyNum", service.UnreadApplyNum)
 		// TODO:测试使用

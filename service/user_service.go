@@ -37,7 +37,7 @@ func RegisterService(userReq req.UserRegisterReq) resp.ResponseData {
 		return userQ.Where(user.Name.Eq(userReq.Name)).First()
 	}
 	userR := model.User{}
-	err := utils.GetData(domainEnum.User+userReq.Name, userR, fun)
+	err := utils.GetData(domainEnum.User+userReq.Name, &userR, fun)
 	// 查到了
 	if err == nil {
 		return resp.ErrorResponseData("用户已存在")
@@ -119,7 +119,7 @@ func ApplyFriend(c *gin.Context) {
 		return
 	}
 	// 检查是否已经是好友关系
-	if isFriend := isFriend(c, uid, friendUid); isFriend {
+	if isFriend := isFriends(c, uid, friendUid); isFriend {
 		resp.ErrorResponse(c, "好友已存在")
 		c.Abort()
 		return
@@ -190,7 +190,7 @@ func DeleteFriendService(c *gin.Context) {
 	}
 	friendUid := friend.Uid
 	// 检查是否为好友
-	if isFriend := isFriend(c, uid, friendUid); isFriend {
+	if isFriend := isFriends(c, uid, friendUid); isFriend {
 		tx := global.Query.Begin()
 		userFriend := global.Query.UserFriend
 		userFriendTx := tx.UserFriend.WithContext(context.Background())
@@ -329,13 +329,13 @@ func DeleteFriendService(c *gin.Context) {
 //	@Success	200	{object}	resp.ResponseData	"成功"
 //	@Failure	500	{object}	resp.ResponseData	"内部错误"
 //	@Router		/api/contact/isFriend/:friendUid [get]
-func IsFriend(c *gin.Context) {
+func IsFriends(c *gin.Context) {
 	uid := c.GetInt64("uid")
 	friendUid, _ := strconv.ParseInt(c.Param("friendUid"), 10, 64)
-	resp.SuccessResponse(c, isFriend(c, uid, int64(friendUid)))
+	resp.SuccessResponse(c, isFriends(c, uid, int64(friendUid)))
 }
 
-func isFriend(c *gin.Context, uid, friendUid int64) bool {
+func isFriends(c *gin.Context, uid, friendUid int64) bool {
 	// 检查是否已经是好友关系
 	friend, err := query.UserFriend.WithContext(context.Background()).Where(query.UserFriend.UID.Eq(uid), query.UserFriend.FriendUID.Eq(friendUid)).First()
 	if err != nil && err.Error() != "record not found" {

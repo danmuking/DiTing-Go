@@ -42,7 +42,7 @@ func GetData(cacheKey string, value any, dbQueryFunc func() (interface{}, error)
 	if err == nil {
 		return nil
 	} else if !errors.Is(err, redis.Nil) {
-		return nil
+		return err
 	}
 	err = QueryAndSet(cacheKey, value, dbQueryFunc)
 	if err != nil {
@@ -55,6 +55,7 @@ func GetData(cacheKey string, value any, dbQueryFunc func() (interface{}, error)
 func QueryAndSet(cacheKey string, value any, dbQueryFunc func() (interface{}, error)) error {
 	// 2. 从数据库中获取数据
 	result, err := dbQueryFunc()
+	// TODO:这里有问题
 	value = copier.Copy(value, result)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -68,4 +69,8 @@ func QueryAndSet(cacheKey string, value any, dbQueryFunc func() (interface{}, er
 		return err
 	}
 	return err
+}
+
+func RemoveData(key string) {
+	global.Rdb.Del(key)
 }

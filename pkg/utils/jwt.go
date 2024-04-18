@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"fmt"
+	"DiTing-Go/global"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -31,7 +31,7 @@ func GenerateToken(uid int64) (string, error) {
 	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	token, err := tokenClaims.SignedString(jwtSecret)
 	if err != nil {
-		fmt.Errorf("generate token failed: %v", err)
+		global.Logger.Errorf("generate token failed: %v", err)
 	}
 	return token, err
 }
