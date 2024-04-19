@@ -282,7 +282,7 @@ func DeleteGroupService(c *gin.Context) {
 	message := global.Query.Message
 	messageTx := tx.Message.WithContext(ctx)
 	msg := model.Message{
-		Status: 0,
+		DeleteStatus: 0,
 	}
 	if _, err := messageTx.Where(message.RoomID.Eq(roomGroupR.ID)).Updates(msg); err != nil {
 		if err := tx.Rollback(); err != nil {

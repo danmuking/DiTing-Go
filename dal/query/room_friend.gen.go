@@ -32,7 +32,7 @@ func newRoomFriend(db *gorm.DB, opts ...gen.DOOption) roomFriend {
 	_roomFriend.Uid1 = field.NewInt64(tableName, "uid1")
 	_roomFriend.Uid2 = field.NewInt64(tableName, "uid2")
 	_roomFriend.RoomKey = field.NewString(tableName, "room_key")
-	_roomFriend.Status = field.NewInt32(tableName, "status")
+	_roomFriend.DeleteStatus = field.NewInt32(tableName, "delete_status")
 	_roomFriend.CreateTime = field.NewTime(tableName, "create_time")
 	_roomFriend.UpdateTime = field.NewTime(tableName, "update_time")
 
@@ -45,15 +45,15 @@ func newRoomFriend(db *gorm.DB, opts ...gen.DOOption) roomFriend {
 type roomFriend struct {
 	roomFriendDo roomFriendDo
 
-	ALL        field.Asterisk
-	ID         field.Int64  // id
-	RoomID     field.Int64  // 房间id
-	Uid1       field.Int64  // uid1（更小的uid）
-	Uid2       field.Int64  // uid2（更大的uid）
-	RoomKey    field.String // 房间key由两个uid拼接，先做排序uid1_uid2
-	Status     field.Int32  // 房间状态 0正常 1禁用(删好友了禁用)
-	CreateTime field.Time   // 创建时间
-	UpdateTime field.Time   // 修改时间
+	ALL          field.Asterisk
+	ID           field.Int64  // id
+	RoomID       field.Int64  // 房间id
+	Uid1         field.Int64  // uid1（更小的uid）
+	Uid2         field.Int64  // uid2（更大的uid）
+	RoomKey      field.String // 房间key由两个uid拼接，先做排序uid1_uid2
+	DeleteStatus field.Int32  // 房间状态 0正常 1禁用(删好友了禁用)
+	CreateTime   field.Time   // 创建时间
+	UpdateTime   field.Time   // 修改时间
 
 	fieldMap map[string]field.Expr
 }
@@ -75,7 +75,7 @@ func (r *roomFriend) updateTableName(table string) *roomFriend {
 	r.Uid1 = field.NewInt64(table, "uid1")
 	r.Uid2 = field.NewInt64(table, "uid2")
 	r.RoomKey = field.NewString(table, "room_key")
-	r.Status = field.NewInt32(table, "status")
+	r.DeleteStatus = field.NewInt32(table, "delete_status")
 	r.CreateTime = field.NewTime(table, "create_time")
 	r.UpdateTime = field.NewTime(table, "update_time")
 
@@ -110,7 +110,7 @@ func (r *roomFriend) fillFieldMap() {
 	r.fieldMap["uid1"] = r.Uid1
 	r.fieldMap["uid2"] = r.Uid2
 	r.fieldMap["room_key"] = r.RoomKey
-	r.fieldMap["status"] = r.Status
+	r.fieldMap["delete_status"] = r.DeleteStatus
 	r.fieldMap["create_time"] = r.CreateTime
 	r.fieldMap["update_time"] = r.UpdateTime
 }

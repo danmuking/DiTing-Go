@@ -35,6 +35,7 @@ func newRoom(db *gorm.DB, opts ...gen.DOOption) room {
 	_room.ExtJSON = field.NewString(tableName, "ext_json")
 	_room.CreateTime = field.NewTime(tableName, "create_time")
 	_room.UpdateTime = field.NewTime(tableName, "update_time")
+	_room.DeleteStatus = field.NewInt32(tableName, "delete_status")
 
 	_room.fillFieldMap()
 
@@ -45,15 +46,16 @@ func newRoom(db *gorm.DB, opts ...gen.DOOption) room {
 type room struct {
 	roomDo roomDo
 
-	ALL        field.Asterisk
-	ID         field.Int64  // id
-	Type       field.Int32  // 房间类型 1群聊 2单聊
-	HotFlag    field.Int32  // 是否全员展示 0否 1是
-	ActiveTime field.Time   // 群最后消息的更新时间（热点群不需要写扩散，只更新这里）
-	LastMsgID  field.Int64  // 会话中的最后一条消息id
-	ExtJSON    field.String // 额外信息（根据不同类型房间有不同存储的东西）
-	CreateTime field.Time   // 创建时间
-	UpdateTime field.Time   // 修改时间
+	ALL          field.Asterisk
+	ID           field.Int64  // id
+	Type         field.Int32  // 房间类型 1群聊 2单聊
+	HotFlag      field.Int32  // 是否全员展示 0否 1是
+	ActiveTime   field.Time   // 群最后消息的更新时间（热点群不需要写扩散，只更新这里）
+	LastMsgID    field.Int64  // 会话中的最后一条消息id
+	ExtJSON      field.String // 额外信息（根据不同类型房间有不同存储的东西）
+	CreateTime   field.Time   // 创建时间
+	UpdateTime   field.Time   // 修改时间
+	DeleteStatus field.Int32  // 房间状态 0正常 1禁用(删好友了禁用)
 
 	fieldMap map[string]field.Expr
 }
@@ -78,6 +80,7 @@ func (r *room) updateTableName(table string) *room {
 	r.ExtJSON = field.NewString(table, "ext_json")
 	r.CreateTime = field.NewTime(table, "create_time")
 	r.UpdateTime = field.NewTime(table, "update_time")
+	r.DeleteStatus = field.NewInt32(table, "delete_status")
 
 	r.fillFieldMap()
 
@@ -102,7 +105,7 @@ func (r *room) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (r *room) fillFieldMap() {
-	r.fieldMap = make(map[string]field.Expr, 8)
+	r.fieldMap = make(map[string]field.Expr, 9)
 	r.fieldMap["id"] = r.ID
 	r.fieldMap["type"] = r.Type
 	r.fieldMap["hot_flag"] = r.HotFlag
@@ -111,6 +114,7 @@ func (r *room) fillFieldMap() {
 	r.fieldMap["ext_json"] = r.ExtJSON
 	r.fieldMap["create_time"] = r.CreateTime
 	r.fieldMap["update_time"] = r.UpdateTime
+	r.fieldMap["delete_status"] = r.DeleteStatus
 }
 
 func (r room) clone(db *gorm.DB) room {

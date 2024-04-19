@@ -32,7 +32,7 @@ func newMessage(db *gorm.DB, opts ...gen.DOOption) message {
 	_message.FromUID = field.NewInt64(tableName, "from_uid")
 	_message.Content = field.NewString(tableName, "content")
 	_message.ReplyMsgID = field.NewInt64(tableName, "reply_msg_id")
-	_message.Status = field.NewInt32(tableName, "status")
+	_message.DeleteStatus = field.NewInt32(tableName, "delete_status")
 	_message.GapCount = field.NewInt32(tableName, "gap_count")
 	_message.Type = field.NewInt32(tableName, "type")
 	_message.Extra = field.NewString(tableName, "extra")
@@ -48,18 +48,18 @@ func newMessage(db *gorm.DB, opts ...gen.DOOption) message {
 type message struct {
 	messageDo messageDo
 
-	ALL        field.Asterisk
-	ID         field.Int64  // id
-	RoomID     field.Int64  // 会话表id
-	FromUID    field.Int64  // 消息发送者uid
-	Content    field.String // 消息内容
-	ReplyMsgID field.Int64  // 回复的消息内容
-	Status     field.Int32  // 消息状态 0正常 1删除
-	GapCount   field.Int32  // 与回复的消息间隔多少条
-	Type       field.Int32  // 消息类型 1正常文本 2.撤回消息
-	Extra      field.String // 扩展信息
-	CreateTime field.Time   // 创建时间
-	UpdateTime field.Time   // 修改时间
+	ALL          field.Asterisk
+	ID           field.Int64  // id
+	RoomID       field.Int64  // 会话表id
+	FromUID      field.Int64  // 消息发送者uid
+	Content      field.String // 消息内容
+	ReplyMsgID   field.Int64  // 回复的消息内容
+	DeleteStatus field.Int32  // 消息状态 0正常 1删除
+	GapCount     field.Int32  // 与回复的消息间隔多少条
+	Type         field.Int32  // 消息类型 1正常文本 2.撤回消息
+	Extra        field.String // 扩展信息
+	CreateTime   field.Time   // 创建时间
+	UpdateTime   field.Time   // 修改时间
 
 	fieldMap map[string]field.Expr
 }
@@ -81,7 +81,7 @@ func (m *message) updateTableName(table string) *message {
 	m.FromUID = field.NewInt64(table, "from_uid")
 	m.Content = field.NewString(table, "content")
 	m.ReplyMsgID = field.NewInt64(table, "reply_msg_id")
-	m.Status = field.NewInt32(table, "status")
+	m.DeleteStatus = field.NewInt32(table, "delete_status")
 	m.GapCount = field.NewInt32(table, "gap_count")
 	m.Type = field.NewInt32(table, "type")
 	m.Extra = field.NewString(table, "extra")
@@ -117,7 +117,7 @@ func (m *message) fillFieldMap() {
 	m.fieldMap["from_uid"] = m.FromUID
 	m.fieldMap["content"] = m.Content
 	m.fieldMap["reply_msg_id"] = m.ReplyMsgID
-	m.fieldMap["status"] = m.Status
+	m.fieldMap["delete_status"] = m.DeleteStatus
 	m.fieldMap["gap_count"] = m.GapCount
 	m.fieldMap["type"] = m.Type
 	m.fieldMap["extra"] = m.Extra
