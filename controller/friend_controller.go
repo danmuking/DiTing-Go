@@ -47,3 +47,23 @@ func DeleteFriendController(c *gin.Context) {
 	response := service.DeleteFriendService(uid, deleteFriendReq)
 	resp.ReturnResponse(c, response)
 }
+
+// AgreeFriendController 同意好友申请
+//
+//	@Summary	同意好友申请
+//	@Produce	json
+//	@Param		uid	body		int					true	"好友uid"
+//	@Success	200	{object}	resp.ResponseData	"成功"
+//	@Failure	500	{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/user/agree [put]
+func AgreeFriendController(c *gin.Context) {
+	uid := c.GetInt64("uid")
+	agreeFriendReq := req.AgreeFriendReq{}
+	if err := c.ShouldBind(&agreeFriendReq); err != nil { //ShouldBind()会自动推导
+		resp.ErrorResponse(c, "参数错误")
+		c.Abort()
+		return
+	}
+	response := service.AgreeFriendService(uid, agreeFriendReq.Uid)
+	resp.ReturnResponse(c, response)
+}

@@ -13,14 +13,11 @@ import (
 	"DiTing-Go/pkg/resp"
 	_ "DiTing-Go/pkg/setting"
 	"DiTing-Go/pkg/utils"
-	"bytes"
 	"context"
 	"github.com/gin-gonic/gin"
-	"github.com/goccy/go-json"
 	"github.com/jinzhu/copier"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
-	"io"
 	"log"
 	"strconv"
 )
@@ -82,94 +79,6 @@ func LoginService(loginReq req.UserLoginReq) resp.ResponseData {
 		return resp.ErrorResponseData("系统繁忙，请稍后再试~")
 	}
 	return resp.SuccessResponseData(token)
-}
-
-// ApplyFriend 添加好友
-//
-//	@Summary	添加好友
-//	@Produce	json
-//	@Param		uid	body		int					true	"好友uid"
-//	@Param		msg	body		string				true	"验证消息"
-//	@Success	200	{object}	resp.ResponseData	"成功"
-//	@Failure	500	{object}	resp.ResponseData	"内部错误"
-//	@Router		/api/contact/add [post]
-func ApplyFriend(c *gin.Context) {
-	uid := c.GetInt64("uid")
-	applyReq := req.UserApplyReq{}
-	data, err := c.GetRawData()
-	if err != nil { //ShouldBind()会自动推导
-		resp.ErrorResponse(c, "参数错误")
-		c.Abort()
-		return
-	}
-	c.Request.Body = io.NopCloser(bytes.NewBuffer(data))
-
-	if err := json.Unmarshal(data, &applyReq); err != nil {
-		resp.ErrorResponse(c, "参数错误")
-		c.Abort()
-		return
-	}
-	friendUid := applyReq.Uid
-	//检查用户是否存在
-	user, err := query.User.WithContext(context.Background()).Where(query.User.ID.Eq(friendUid)).First()
-	if user == nil {
-		resp.ErrorResponse(c, "用户不存在")
-		c.Abort()
-		return
-	}
-	// 检查是否已经是好友关系
-	if isFriend := isFriends(c, uid, friendUid); isFriend {
-		resp.ErrorResponse(c, "好友已存在")
-		c.Abort()
-		return
-	}
-	// 检查是否已经发送过好友请求
-	friendApply, err := query.UserApply.WithContext(context.Background()).Where(query.UserApply.UID.Eq(uid), query.UserApply.TargetID.Eq(friendUid)).First()
-	if err != nil && err.Error() != "record not found" {
-		resp.ErrorResponse(c, "参数错误")
-		c.Abort()
-		return
-	}
-	if friendApply != nil {
-		resp.ErrorResponse(c, "已发送过好友请求，请等待对方同意")
-		c.Abort()
-		return
-	}
-	// 检查对方是否给我们发送过好友请求，如果是，直接同意
-	apply, err := query.UserApply.WithContext(context.Background()).Where(query.UserApply.UID.Eq(friendUid), query.UserApply.TargetID.Eq(uid)).First()
-	if err != nil && err.Error() != "record not found" {
-		resp.ErrorResponse(c, "参数错误")
-		c.Abort()
-		return
-	}
-	if apply != nil {
-		Agree(c)
-		return
-	}
-	// 发送好友请求
-	err = query.UserApply.WithContext(context.Background()).Create(&model.UserApply{
-		UID:        uid,
-		TargetID:   friendUid,
-		Msg:        applyReq.Msg,
-		Status:     enum.NO,
-		ReadStatus: enum.NO,
-	})
-	if err != nil {
-		resp.ErrorResponse(c, "参数错误")
-		c.Abort()
-		return
-	}
-	// 发送好友申请事件
-	global.Bus.Publish(domainEnum.FriendApplyEvent, model.UserApply{
-		UID:        uid,
-		TargetID:   friendUid,
-		Msg:        applyReq.Msg,
-		Status:     enum.NO,
-		ReadStatus: enum.NO,
-	})
-
-	resp.SuccessResponseWithMsg(c, "success")
-	return
 }
 
 // IsFriend 是否为好友关系

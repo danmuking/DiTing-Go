@@ -12,12 +12,12 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
-	"log"
 	"sort"
 	"strconv"
 )
 
 // ApplyFriendService 添加好友
+// TODO：考虑软删除条件
 func ApplyFriendService(uid int64, applyReq req.UserApplyReq) resp.ResponseData {
 	ctx := context.Background()
 	friendUid := applyReq.Uid
@@ -118,7 +118,7 @@ func IsFriend(uid, friendUid int64) (bool, error) {
 	// 检查是否已经是好友关系
 	userFriendR := model.UserFriend{}
 	fun := func() (interface{}, error) {
-		return userFriendQ.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(friendUid)).First()
+		return userFriendQ.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(friendUid), userFriend.DeleteStatus.Eq(enum.NORMAL)).First()
 	}
 	key := fmt.Sprintf("%s%d_%d", domainEnum.UserFriend, uid, friendUid)
 	err := utils.GetData(key, &userFriendR, fun)
@@ -132,6 +132,15 @@ func IsFriend(uid, friendUid int64) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func AgreeFriendService(uid, friendUid int64) resp.ResponseData {
+	err := AgreeFriend(uid, friendUid)
+	if err != nil {
+		global.Logger.Errorf("同意好友请求失败 %s", err)
+		return resp.ErrorResponseData("系统正忙，请稍后再试")
+	}
+	return resp.SuccessResponseData(nil)
 }
 
 // AgreeFriend 同意好友请求
@@ -162,31 +171,66 @@ func AgreeFriend(uid, friendUid int64) error {
 	userFriendTx := tx.UserFriend.WithContext(context.Background())
 	if _, err = userApplyTx.Where(userApply.UID.Eq(friendUid), userApply.TargetID.Eq(uid)).Updates(userApplyR); err != nil {
 		if err := tx.Rollback(); err != nil {
-			log.Println("事务回滚失败", err.Error())
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 		}
 		return err
 	}
+	defer utils.RemoveData(key)
 
 	var userFriends = []*model.UserFriend{
 		{
-			UID:       uid,
-			FriendUID: friendUid,
+			UID:          uid,
+			FriendUID:    friendUid,
+			DeleteStatus: enum.NORMAL,
 		},
 		{
-			UID:       friendUid,
-			FriendUID: uid,
+			UID:          friendUid,
+			FriendUID:    uid,
+			DeleteStatus: enum.NORMAL,
 		},
 	}
-	if err = userFriendTx.Create(userFriends...); err != nil {
-		if err := tx.Rollback(); err != nil {
-			log.Println("事务回滚失败", err.Error())
-		}
+	// 检查是否存在软删除状态的好友关系
+	userFriend := global.Query.UserFriend
+	fun = func() (interface{}, error) {
+		return userFriendTx.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(friendUid)).First()
+	}
+	userFriendR := model.UserFriend{}
+	key = fmt.Sprintf("%s%d_%d", domainEnum.UserFriend, uid, friendUid)
+	err = utils.GetData(key, &userFriendR, fun)
+	// err
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		global.Logger.Errorf("更新好友关系失败 %s", err.Error())
 		return err
+	}
+	// 查到了,更新状态
+	if err == nil {
+		_, err := userFriendTx.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(friendUid)).Updates(userFriendTx)
+		_, err = userFriendTx.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(friendUid)).Updates(userFriendTx)
+		if err != nil {
+			if err := tx.Rollback(); err != nil {
+				global.Logger.Errorf("事务回滚失败 %s", err.Error())
+			}
+			global.Logger.Errorf("更新好友关系失败 %s", err.Error())
+			return err
+		}
+		// 删除redis缓存
+		key = fmt.Sprintf("%s%d_%d", domainEnum.UserFriend, uid, friendUid)
+		defer utils.RemoveData(key)
+		key = fmt.Sprintf("%s%d_%d", domainEnum.UserFriend, friendUid, uid)
+		defer utils.RemoveData(key)
+	} else {
+		// 没查到，创建新的好友关系
+		if err = userFriendTx.Create(userFriends...); err != nil {
+			if err := tx.Rollback(); err != nil {
+				global.Logger.Errorf("事务回滚失败 %s", err)
+			}
+			return err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	utils.RemoveData(key)
+
 	// 发送新好友事件
 	global.Bus.Publish(domainEnum.FriendNewEvent, model.UserFriend{
 		UID:       uid,
@@ -224,7 +268,7 @@ func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) resp.Re
 	// 删除redis缓存
 	defer utils.RemoveData(fmt.Sprintf("%s%d_%d", domainEnum.UserFriend, uid, deleteFriendUid))
 
-	if _, err := userFriendTx.Where(userFriend.UID.Eq(deleteFriendUid), userFriend.FriendUID.Eq(uid)).Delete(); err != nil {
+	if _, err := userFriendTx.Where(userFriend.UID.Eq(deleteFriendUid), userFriend.FriendUID.Eq(uid)).Update(userFriend.DeleteStatus, enum.DELETED); err != nil {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 		}
@@ -304,7 +348,7 @@ func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) resp.Re
 		global.Logger.Errorf("删除消息失败 %s", err.Error())
 		return resp.ErrorResponseData("删除好友失败")
 	}
-	// TODO: 删除缓存
+	// TODO: 删除消息表缓存
 
 	// 删除会话
 	contact := global.Query.Contact

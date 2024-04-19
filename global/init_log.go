@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"io"
 	"os"
 	"path"
 )
@@ -23,9 +24,15 @@ func init() {
 
 	//实例化
 	Logger = logrus.New()
-
-	//设置输出
-	Logger.Out = src
+	writers := []io.Writer{
+		src,
+		os.Stdout}
+	fileAndStdoutWriter := io.MultiWriter(writers...)
+	if err == nil {
+		Logger.SetOutput(fileAndStdoutWriter)
+	} else {
+		Logger.Info("failed to log to file.")
+	}
 
 	//设置日志级别
 	Logger.SetLevel(logrus.DebugLevel)

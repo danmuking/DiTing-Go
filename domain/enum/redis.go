@@ -10,4 +10,5 @@ const (
 	UserApply  = Project + "userApply:"
 	RoomFriend = Project + "roomFriend:"
 	Contact    = Project + "contact:"
+	Room       = Project + "room:"
 )

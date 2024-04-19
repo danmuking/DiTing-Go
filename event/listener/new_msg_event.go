@@ -5,9 +5,11 @@ import (
 	query "DiTing-Go/dal/query"
 	"DiTing-Go/domain/enum"
 	"DiTing-Go/global"
+	"DiTing-Go/pkg/utils"
 	"DiTing-Go/websocket/service"
 	"context"
 	"log"
+	"strconv"
 	"time"
 )
 
@@ -77,14 +79,30 @@ func UpdateContactEvent(msg model.Message) {
 func NewMsgEvent(msg model.Message) {
 	// 向房间中的所有用户发送消息，包括自己
 	roomQ := global.Query.WithContext(context.Background()).Room
-	room, _ := roomQ.Where(query.Room.ID.Eq(msg.RoomID)).First()
+	fun := func() (interface{}, error) {
+		return roomQ.Where(query.Room.ID.Eq(msg.RoomID)).First()
+	}
+	room := model.Room{}
+	err := utils.GetData(enum.Room+strconv.FormatInt(msg.RoomID, 10), &room, fun)
+	if err != nil {
+		global.Logger.Errorf("查询房间失败 %s", err)
+		return
+	}
 	// 单聊
 	if room.Type == enum.PERSONAL {
 		roomFriendQ := global.Query.WithContext(context.Background()).RoomFriend
-		roomFriend, _ := roomFriendQ.Where(query.RoomFriend.RoomID.Eq(room.ID)).First()
+		roomFriendR := model.RoomFriend{}
+		fun = func() (interface{}, error) {
+			return roomFriendQ.Where(query.RoomFriend.RoomID.Eq(room.ID)).First()
+		}
+		err = utils.GetData(enum.RoomFriend+strconv.FormatInt(room.ID, 10), &roomFriendR, fun)
+		if err != nil {
+			global.Logger.Errorf("查询好友房间失败 %s", err)
+			return
+		}
 		// 发送新消息事件
-		service.Send(roomFriend.Uid1)
-		service.Send(roomFriend.Uid2)
+		service.Send(roomFriendR.Uid1)
+		service.Send(roomFriendR.Uid2)
 	} else if room.Type == enum.GROUP {
 		roomGroupQ := global.Query.WithContext(context.Background()).RoomGroup
 		roomGroup, _ := roomGroupQ.Where(query.RoomGroup.RoomID.Eq(room.ID)).First()
