@@ -48,7 +48,7 @@ func initGin() {
 		//添加好友
 		apiUser.POST("/add", controller.ApplyFriendController)
 		//删除好友
-		apiUser.DELETE("/delete", service.DeleteFriendService)
+		apiUser.DELETE("/delete/:uid", controller.DeleteFriendController)
 		//获取好友申请列表
 		apiUser.GET("/getApplyList", service.GetApplyList)
 		//同意好友申请

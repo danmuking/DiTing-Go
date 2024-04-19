@@ -110,7 +110,7 @@ func getContactDto(contact model.Contact) (*dto.ContactDto, error) {
 		contactDto.Avatar = userR.Avatar
 		contactDto.LastTime = contact.ActiveTime
 	}
-	count, err := msgQ.Where(msg.RoomID.Eq(contact.RoomID), msg.Status.Eq(enum.NORMAL), msg.CreateTime.Gt(contact.ReadTime)).Limit(99).Count()
+	count, err := msgQ.Where(msg.RoomID.Eq(contact.RoomID), msg.DeleteStatus.Eq(enum.NORMAL), msg.CreateTime.Gt(contact.ReadTime)).Limit(99).Count()
 	if err != nil {
 		global.Logger.Errorf("统计未读数失败 %s", err)
 		return nil, err

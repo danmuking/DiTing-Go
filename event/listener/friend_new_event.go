@@ -71,9 +71,9 @@ func FriendNewEvent(friend model.UserFriend) {
 		FromUID: friend.UID,
 		Content: "你们已经是好友了，开始聊天吧",
 		// TODO: 抽取为常量
-		Status: 0,
-		Type:   enum.TextMessage,
-		Extra:  "{}",
+		DeleteStatus: 0,
+		Type:         enum.TextMessage,
+		Extra:        "{}",
 	}
 	if err := service.SendTextMsg(&newMsg); err != nil {
 		log.Println("发送消息失败", err.Error())

@@ -55,7 +55,6 @@ func GetData(cacheKey string, value any, dbQueryFunc func() (interface{}, error)
 func QueryAndSet(cacheKey string, value any, dbQueryFunc func() (interface{}, error)) error {
 	// 2. 从数据库中获取数据
 	result, err := dbQueryFunc()
-	// TODO:这里有问题
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			global.Logger.Errorf("查询数据库失败: %v", err)
@@ -64,11 +63,11 @@ func QueryAndSet(cacheKey string, value any, dbQueryFunc func() (interface{}, er
 	}
 	err = copier.Copy(value, result)
 	if err != nil {
-		global.Logger.Errorf("复制数据失败: %v", err)
+		global.Logger.Errorf("拷贝数据失败: %v", err)
 		return err
 	}
 	// 3. 将查询结果写回缓存
-	if err = SetString(cacheKey, value); err != nil {
+	if err = SetString(cacheKey, result); err != nil {
 		global.Logger.Errorf("写入redis失败: %v", err)
 		return err
 	}

@@ -105,12 +105,12 @@ func GetPreSigned(c *gin.Context) {
 	}
 	// TODO:抽象为常量
 	newMsg := model.Message{
-		FromUID: uid,
-		RoomID:  roomId,
-		Content: "[图片]",
-		Status:  0,
-		Type:    3,
-		Extra:   string(jsonStr),
+		FromUID:      uid,
+		RoomID:       roomId,
+		Content:      "[图片]",
+		DeleteStatus: 0,
+		Type:         3,
+		Extra:        string(jsonStr),
 	}
 	if err := messageTx.Create(&newMsg); err != nil {
 		if err := tx.Rollback(); err != nil {

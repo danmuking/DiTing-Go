@@ -8,4 +8,6 @@ const (
 	User       = Project + "user:"
 	UserFriend = Project + "userFriend:"
 	UserApply  = Project + "userApply:"
+	RoomFriend = Project + "roomFriend:"
+	Contact    = Project + "contact:"
 )
