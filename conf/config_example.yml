@@ -16,3 +16,6 @@ minio:
 redis:
   host: xxxx
   password: xxxxx
+rocketmq:
+  host: xxx.xxx.xxx.xxx:9000
+  group: diting

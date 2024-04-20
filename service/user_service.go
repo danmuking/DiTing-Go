@@ -14,7 +14,9 @@ import (
 	_ "DiTing-Go/pkg/setting"
 	"DiTing-Go/pkg/utils"
 	"context"
+	"github.com/apache/rocketmq-client-go/v2/primitive"
 	"github.com/gin-gonic/gin"
+	"github.com/goccy/go-json"
 	"github.com/jinzhu/copier"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
@@ -78,6 +80,16 @@ func LoginService(loginReq req.UserLoginReq) resp.ResponseData {
 		global.Logger.Errorf("生成jwt失败 %v", err)
 		return resp.ErrorResponseData("系统繁忙，请稍后再试~")
 	}
+	// 发送用户登录事件
+	userByte, err := json.Marshal(userR)
+	if err != nil {
+		global.Logger.Errorf("json序列化失败 %v", err)
+	}
+	msg := &primitive.Message{
+		Topic: domainEnum.UserLoginTopic,
+		Body:  userByte,
+	}
+	_, _ = global.RocketProducer.SendSync(ctx, msg)
 	return resp.SuccessResponseData(token)
 }
 
