@@ -9,11 +9,11 @@ import (
 	"DiTing-Go/websocket/service"
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/apache/rocketmq-client-go/v2"
 	"github.com/apache/rocketmq-client-go/v2/consumer"
 	"github.com/apache/rocketmq-client-go/v2/primitive"
 	"github.com/spf13/viper"
-	"strconv"
 	"time"
 )
 
@@ -150,7 +150,8 @@ func sendMsg(msg model.Message) error {
 		return roomQ.Where(query.Room.ID.Eq(msg.RoomID)).First()
 	}
 	room := model.Room{}
-	err := utils.GetData(enum.Room+strconv.FormatInt(msg.RoomID, 10), &room, fun)
+	key := fmt.Sprintf(enum.RoomCacheByID, msg.RoomID)
+	err := utils.GetData(key, &room, fun)
 	if err != nil {
 		global.Logger.Errorf("查询房间失败 %s", err)
 		return err
@@ -162,7 +163,8 @@ func sendMsg(msg model.Message) error {
 		fun = func() (interface{}, error) {
 			return roomFriendQ.Where(query.RoomFriend.RoomID.Eq(room.ID)).First()
 		}
-		err = utils.GetData(enum.RoomFriend+strconv.FormatInt(room.ID, 10), &roomFriendR, fun)
+		key := fmt.Sprintf(enum.RoomFriendCacheByRoomID, room.ID)
+		err = utils.GetData(key, &roomFriendR, fun)
 		if err != nil {
 			global.Logger.Errorf("查询好友房间失败 %s", err)
 			return err
@@ -170,6 +172,7 @@ func sendMsg(msg model.Message) error {
 		// 发送新消息事件
 		service.Send(roomFriendR.Uid1)
 		service.Send(roomFriendR.Uid2)
+		//	TODO:群聊
 	} else if room.Type == enum.GROUP {
 		roomGroupQ := global.Query.WithContext(context.Background()).RoomGroup
 		roomGroup, _ := roomGroupQ.Where(query.RoomGroup.RoomID.Eq(room.ID)).First()

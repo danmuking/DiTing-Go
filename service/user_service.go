@@ -14,6 +14,7 @@ import (
 	_ "DiTing-Go/pkg/setting"
 	"DiTing-Go/pkg/utils"
 	"context"
+	"fmt"
 	"github.com/apache/rocketmq-client-go/v2/primitive"
 	"github.com/gin-gonic/gin"
 	"github.com/goccy/go-json"
@@ -35,7 +36,8 @@ func RegisterService(userReq req.UserRegisterReq) (resp.ResponseData, error) {
 		return userQ.Where(user.Name.Eq(userReq.Name)).First()
 	}
 	userR := model.User{}
-	err := utils.GetData(domainEnum.User+userReq.Name, &userR, fun)
+	key := fmt.Sprintf(domainEnum.UserCacheByName, userReq.Name)
+	err := utils.GetData(key, &userR, fun)
 	// 查到了
 	if err == nil {
 		return resp.ErrorResponseData("用户已存在"), errors.New("Business Error")
@@ -69,7 +71,8 @@ func LoginService(loginReq req.UserLoginReq) (resp.ResponseData, error) {
 		return userQ.Where(user.Name.Eq(loginReq.Name), user.Password.Eq(loginReq.Password)).First()
 	}
 	userR := model.User{}
-	err := utils.GetData(domainEnum.User+loginReq.Name, &userR, fun)
+	key := fmt.Sprintf(domainEnum.UserCacheByName, loginReq.Name)
+	err := utils.GetData(key, &userR, fun)
 	if err != nil {
 		global.Logger.Errorf("查询数据失败: %v", err)
 		return resp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
