@@ -316,28 +316,48 @@ func UnreadApplyNum(c *gin.Context) {
 func GetFriendList(c *gin.Context) {
 	ctx := context.Background()
 	uid := c.GetInt64("uid")
-	// 获取好友列表
-	userFriend := query.UserFriend
-	// 获取 UserFriend 表中 uid = uid 的好友的uid组成的集合
-	// select friend_uid from user_friend where uid = ?
-	friendIDs, err := userFriend.WithContext(ctx).Select(userFriend.FriendUID).Where(userFriend.UID.Eq(uid)).Find()
-	// 将friendIDs转换为切片
-	// TODO 实现游标翻页
-	friendIDsSlice := make([]int64, 0)
-	for _, id := range friendIDs {
-		friendIDsSlice = append(friendIDsSlice, id.FriendUID)
+
+	// 从请求中获取cursor和pagesize两个参数
+	cursor := c.Query("cursor")
+	pagesize, _ := strconv.Atoi(c.Query("pagesize"))
+
+	// 如果pagesize没有提供或者为0，我们设置一个默认值
+	if pagesize == 0 {
+		log.Println("pagesize is 0, set it to 20")
+		pagesize = 20
 	}
+
+	pageRequest := cursorUtils.PageReq{
+		Cursor:   &cursor,
+		PageSize: pagesize,
+	}
+
+	if err := c.ShouldBindQuery(&pageRequest); err != nil {
+		resp.ErrorResponse(c, "参数错误")
+		return
+	}
+
+	// 获取 UserFriend 表中 uid = uid 的好友的uid组成的集合
+	db := dal.DB
+	userFriend := make([]model.UserFriend, 0)
+	condition := []interface{}{"uid=?", strconv.FormatInt(uid, 10)}
+	pageResp, err := cursorUtils.Paginate(db, pageRequest, &userFriend, "create_time", false, condition...)
 	if err != nil {
 		// todo 添加日志系统
-		log.Printf("SQL查询错误, 错误信息为 : %v", err)
-		resp.ErrorResponse(c, "出现错误，未能获取联系人列表")
+		log.Printf("DB excete Sql happen [ERROR], err msg is : %v", err)
+		resp.ErrorResponse(c, "系统繁忙，亲稍后再试")
 		return
+	}
+	uids := make([]int64, 0)
+
+	for _, friend := range userFriend {
+		uids = append(uids, friend.FriendUID)
 	}
 
 	// 获取好友信息
 	users := query.User
 	// select id , name , avatar from user where id in (...) and status = 0
-	friendList, err := users.WithContext(ctx).Select(users.ID, users.Name, users.Avatar).Where(users.ID.In(friendIDsSlice...), users.Status.Eq(0)).Find()
+	friendList, err := users.WithContext(ctx).Select(users.ID, users.Name, users.Avatar).Where(users.ID.In(uids...)).Find()
 	if err != nil {
 		// todo 添加日志系统
 		log.Printf("SQL查询错误, 错误信息为 : %v", err)
@@ -348,5 +368,6 @@ func GetFriendList(c *gin.Context) {
 	// 数据转换
 	friendListVO := make([]resp2.UserContactResp, 0)
 	_ = copier.Copy(&friendListVO, &friendList)
-	resp.SuccessResponse(c, friendListVO)
+	pageResp.Data = friendListVO
+	resp.SuccessResponse(c, pageResp)
 }
