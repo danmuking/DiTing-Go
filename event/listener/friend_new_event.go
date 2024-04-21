@@ -97,7 +97,7 @@ func friendNewEvent(ctx context.Context, ext ...*primitive.MessageExt) (consumer
 		if err == nil {
 			roomFriedR.RoomID = room.ID
 			roomFriedR.DeleteStatus = pkgEnum.NORMAL
-			if _, err := roomFriendQ.Select(roomFriend.RoomID, roomFriend.DeleteStatus).Where(roomFriend.ID.Eq(roomFriedR.ID)).Updates(map[string]interface{}{"room_id": room.ID, "delete_status": pkgEnum.NORMAL}); err != nil {
+			if _, err := roomFriendQ.Select(roomFriend.RoomID, roomFriend.DeleteStatus).Where(roomFriend.ID.Eq(roomFriedR.ID)).Updates(roomFriedR); err != nil {
 				if err := tx.Rollback(); err != nil {
 					global.Logger.Errorf("事务回滚失败 %s", err.Error())
 					return consumer.ConsumeRetryLater, nil
