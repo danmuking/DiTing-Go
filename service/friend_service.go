@@ -374,6 +374,7 @@ func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (resp.R
 		global.Logger.Errorf("删除好友房间失败 %s", err.Error())
 		return resp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
 	}
+	// TODO:如果有多个缓存该如何删除
 	// 删除redis缓存
 	defer utils.RemoveData(fmt.Sprintf("%s%d_%d", domainEnum.RoomFriend, uids[0], uids[1]))
 
@@ -387,6 +388,8 @@ func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (resp.R
 		global.Logger.Errorf("删除房间失败 %s", err.Error())
 		return resp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
 	}
+	// 删除redis缓存
+	defer utils.RemoveData(domainEnum.Room + strconv.FormatInt(roomFriendR.RoomID, 10))
 
 	// 删除消息表
 	msg := global.Query.Message
