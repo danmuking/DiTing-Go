@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/apache/rocketmq-client-go/v2/primitive"
+	"github.com/go-redsync/redsync/v4"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
 	"sort"
@@ -25,6 +26,18 @@ func ApplyFriendService(uid int64, applyReq req.UserApplyReq) (resp.ResponseData
 	friendUid := applyReq.Uid
 	user := global.Query.User
 	userQ := user.WithContext(ctx)
+
+	mutex := global.RedSync.NewMutex(domainEnum.UserLock + strconv.FormatInt(uid, 10))
+	if err := mutex.LockContext(ctx); err != nil {
+		global.Logger.Errorf("加锁失败 %s", err)
+		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+	}
+	defer func(mutex *redsync.Mutex) {
+		_, err := mutex.Unlock()
+		if err != nil {
+			global.Logger.Errorf("解锁失败 %s", err)
+		}
+	}(mutex)
 
 	//检查用户是否存在
 	fun := func() (interface{}, error) {
@@ -137,6 +150,20 @@ func IsFriend(uid, friendUid int64) (bool, error) {
 }
 
 func AgreeFriendService(uid, friendUid int64) (resp.ResponseData, error) {
+
+	ctx := context.Background()
+	mutex := global.RedSync.NewMutex(domainEnum.UserLock + strconv.FormatInt(uid, 10))
+	if err := mutex.LockContext(ctx); err != nil {
+		global.Logger.Errorf("加锁失败 %s", err)
+		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+	}
+	defer func(mutex *redsync.Mutex) {
+		_, err := mutex.Unlock()
+		if err != nil {
+			global.Logger.Errorf("解锁失败 %s", err)
+		}
+	}(mutex)
+
 	err := AgreeFriend(uid, friendUid)
 	if err != nil {
 		global.Logger.Errorf("同意好友请求失败 %s", err)
@@ -252,6 +279,19 @@ func AgreeFriend(uid, friendUid int64) error {
 // DeleteFriendService 删除好友
 func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (resp.ResponseData, error) {
 	ctx := context.Background()
+
+	mutex := global.RedSync.NewMutex(domainEnum.UserLock + strconv.FormatInt(uid, 10))
+	if err := mutex.LockContext(ctx); err != nil {
+		global.Logger.Errorf("加锁失败 %s", err)
+		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+	}
+	defer func(mutex *redsync.Mutex) {
+		_, err := mutex.Unlock()
+		if err != nil {
+			global.Logger.Errorf("解锁失败 %s", err)
+		}
+	}(mutex)
+
 	deleteFriendUid := deleteFriendReq.Uid
 	isFriend, err := IsFriend(uid, deleteFriendUid)
 	if err != nil {

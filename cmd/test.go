@@ -7,15 +7,40 @@ import (
 	"github.com/apache/rocketmq-client-go/v2/consumer"
 	"github.com/apache/rocketmq-client-go/v2/primitive"
 	"github.com/apache/rocketmq-client-go/v2/producer"
+	goredislib "github.com/go-redis/redis/v8"
+	"github.com/go-redsync/redsync/v4"
+	"github.com/go-redsync/redsync/v4/redis/goredis/v8"
 	"os"
 	"strconv"
 	"time"
 )
 
 func main() {
-	go producerR()
-	go consumerR()
-	time.Sleep(1 * time.Hour)
+	//client := redis.NewClient(&redis.Options{
+	//	Addr:     "150.158.151.30:14490",
+	//	Password: "550210817@", // 密码
+	//	DB:       0,            // 数据库
+	//	PoolSize: 20,           // 连接池大小
+	//})
+	client := goredislib.NewClient(&goredislib.Options{
+		Addr:     "150.158.151.30:14490",
+		Password: "550210817@", // 密码
+		DB:       0,            // 数据库
+		PoolSize: 20,           // 连接池大小
+	})
+	pool := goredis.NewPool(client)
+	rs := redsync.New(pool)
+
+	mutex := rs.NewMutex("test-redsync")
+	ctx := context.Background()
+
+	if err := mutex.LockContext(ctx); err != nil {
+		panic(err)
+	}
+
+	if _, err := mutex.UnlockContext(ctx); err != nil {
+		panic(err)
+	}
 }
 
 func producerR() {
