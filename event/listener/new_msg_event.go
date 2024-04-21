@@ -8,23 +8,69 @@ import (
 	"DiTing-Go/pkg/utils"
 	"DiTing-Go/websocket/service"
 	"context"
-	"log"
+	"encoding/json"
+	"github.com/apache/rocketmq-client-go/v2"
+	"github.com/apache/rocketmq-client-go/v2/consumer"
+	"github.com/apache/rocketmq-client-go/v2/primitive"
+	"github.com/spf13/viper"
 	"strconv"
 	"time"
 )
 
 func init() {
-	err := global.Bus.SubscribeAsync(enum.NewMessageEvent, NewMsgEvent, false)
+	host := viper.GetString("rocketmq.host")
+	// 设置推送消费者
+	rocketSendMsgConsumer, _ := rocketmq.NewPushConsumer(
+		//消费组
+		consumer.WithGroupName(enum.NewMessageTopic+"-send-message"),
+		// namesrv地址
+		consumer.WithNameServer([]string{host}),
+	)
+	err := rocketSendMsgConsumer.Subscribe(enum.NewMessageTopic, consumer.MessageSelector{}, UpdateContactEvent)
 	if err != nil {
-		log.Println("订阅事件失败", err.Error())
+		global.Logger.Panicf("subscribe error: %s", err.Error())
 	}
-	err = global.Bus.SubscribeAsync(enum.NewMessageEvent, UpdateContactEvent, false)
+	err = rocketSendMsgConsumer.Start()
 	if err != nil {
-		log.Println("订阅事件失败", err.Error())
+		global.Logger.Panicf("start consumer error: %s", err.Error())
+	}
+
+	// 设置推送消费者
+	rocketUpdateContactConsumer, _ := rocketmq.NewPushConsumer(
+		//消费组
+		consumer.WithGroupName(enum.NewMessageTopic+"-update-contact"),
+		// namesrv地址
+		consumer.WithNameServer([]string{host}),
+	)
+	err = rocketUpdateContactConsumer.Subscribe(enum.NewMessageTopic, consumer.MessageSelector{}, SendMsgEvent)
+	if err != nil {
+		global.Logger.Panicf("subscribe error: %s", err.Error())
+	}
+	err = rocketUpdateContactConsumer.Start()
+	if err != nil {
+		global.Logger.Panicf("start consumer error: %s", err.Error())
 	}
 }
 
-func UpdateContactEvent(msg model.Message) {
+func UpdateContactEvent(ctx context.Context, ext ...*primitive.MessageExt) (consumer.ConsumeResult, error) {
+	for i := range ext {
+		// 解码
+		msg := model.Message{}
+		msgByte := ext[i].Message.Body
+		err := json.Unmarshal(msgByte, &msg)
+		if err != nil {
+			global.Logger.Errorf("json unmarshal error: %s", err.Error())
+			return consumer.ConsumeRetryLater, nil
+		}
+		err = updateContact(msg)
+		if err != nil {
+			global.Logger.Errorf("更新会话失败 %s", err)
+			return consumer.ConsumeRetryLater, nil
+		}
+	}
+	return consumer.ConsumeSuccess, nil
+}
+func updateContact(msg model.Message) error {
 	// 更新会话表
 	ctx := context.Background()
 	room := global.Query.Room
@@ -32,7 +78,7 @@ func UpdateContactEvent(msg model.Message) {
 	roomR, err := roomQ.Where(room.ID.Eq(msg.RoomID)).First()
 	if err != nil {
 		global.Logger.Errorf("查询房间失败 %s", err)
-		return
+		return err
 	}
 	var uids []int64
 	if roomR.Type == enum.PERSONAL {
@@ -41,7 +87,7 @@ func UpdateContactEvent(msg model.Message) {
 		roomFriendR, err := roomFriendQ.Where(roomFriend.RoomID.Eq(roomR.ID)).First()
 		if err != nil {
 			global.Logger.Errorf("查询好友房间失败 %s", err)
-			return
+			return err
 		}
 		uids = []int64{roomFriendR.Uid1, roomFriendR.Uid2}
 	} else if roomR.Type == enum.GROUP {
@@ -51,7 +97,7 @@ func UpdateContactEvent(msg model.Message) {
 		roomGroupR, err := roomGroupQ.Where(roomGroup.RoomID.Eq(roomR.ID)).First()
 		if err != nil {
 			global.Logger.Errorf("查询群聊失败 %s", err)
-			return
+			return err
 		}
 		groupMember := global.Query.GroupMember
 		groupMemberQ := groupMember.WithContext(ctx)
@@ -71,12 +117,33 @@ func UpdateContactEvent(msg model.Message) {
 	_, err = contactQ.Where(contact.UID.In(uids...), contact.RoomID.Eq(msg.RoomID)).Updates(&update)
 	if err != nil {
 		global.Logger.Errorf("更新会话失败 %s", err)
-		return
+		return err
 	}
+	return nil
 }
 
-// NewMsgEvent 新消息事件
-func NewMsgEvent(msg model.Message) {
+// SendMsgEvent 新消息事件
+func SendMsgEvent(ctx context.Context, ext ...*primitive.MessageExt) (consumer.ConsumeResult, error) {
+	for i := range ext {
+		// 解码
+		msg := model.Message{}
+		msgByte := ext[i].Message.Body
+		err := json.Unmarshal(msgByte, &msg)
+		if err != nil {
+			global.Logger.Errorf("json unmarshal error: %s", err.Error())
+			return consumer.ConsumeRetryLater, nil
+		}
+		err = sendMsg(msg)
+		if err != nil {
+			global.Logger.Errorf("发送消息失败 %s", err)
+			return consumer.ConsumeRetryLater, nil
+		}
+	}
+	return consumer.ConsumeSuccess, nil
+}
+
+// sendMsg 发送消息
+func sendMsg(msg model.Message) error {
 	// 向房间中的所有用户发送消息，包括自己
 	roomQ := global.Query.WithContext(context.Background()).Room
 	fun := func() (interface{}, error) {
@@ -86,7 +153,7 @@ func NewMsgEvent(msg model.Message) {
 	err := utils.GetData(enum.Room+strconv.FormatInt(msg.RoomID, 10), &room, fun)
 	if err != nil {
 		global.Logger.Errorf("查询房间失败 %s", err)
-		return
+		return err
 	}
 	// 单聊
 	if room.Type == enum.PERSONAL {
@@ -98,7 +165,7 @@ func NewMsgEvent(msg model.Message) {
 		err = utils.GetData(enum.RoomFriend+strconv.FormatInt(room.ID, 10), &roomFriendR, fun)
 		if err != nil {
 			global.Logger.Errorf("查询好友房间失败 %s", err)
-			return
+			return err
 		}
 		// 发送新消息事件
 		service.Send(roomFriendR.Uid1)
@@ -114,6 +181,6 @@ func NewMsgEvent(msg model.Message) {
 			service.Send(groupMember.UID)
 		}
 	}
-	return
+	return nil
 
 }

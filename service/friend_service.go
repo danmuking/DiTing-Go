@@ -9,7 +9,9 @@ import (
 	"DiTing-Go/pkg/resp"
 	"DiTing-Go/pkg/utils"
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/apache/rocketmq-client-go/v2/primitive"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
 	"sort"
@@ -192,7 +194,7 @@ func AgreeFriend(uid, friendUid int64) error {
 	// 检查是否存在软删除状态的好友关系
 	userFriend := global.Query.UserFriend
 	fun = func() (interface{}, error) {
-		return userFriendTx.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(friendUid)).First()
+		return userFriendTx.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(friendUid), userFriend.DeleteStatus.Eq(enum.DELETED)).First()
 	}
 	userFriendR := model.UserFriend{}
 	key = fmt.Sprintf("%s%d_%d", domainEnum.UserFriend, uid, friendUid)
@@ -204,8 +206,8 @@ func AgreeFriend(uid, friendUid int64) error {
 	}
 	// 查到了,更新状态
 	if err == nil {
-		_, err := userFriendTx.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(friendUid)).Updates(userFriendTx)
-		_, err = userFriendTx.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(friendUid)).Updates(userFriendTx)
+		_, err := userFriendTx.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(friendUid)).Update(userFriend.DeleteStatus, enum.NORMAL)
+		_, err = userFriendTx.Where(userFriend.UID.Eq(friendUid), userFriend.FriendUID.Eq(uid)).Update(userFriend.DeleteStatus, enum.NORMAL)
 		if err != nil {
 			if err := tx.Rollback(); err != nil {
 				global.Logger.Errorf("事务回滚失败 %s", err.Error())
@@ -232,10 +234,18 @@ func AgreeFriend(uid, friendUid int64) error {
 	}
 
 	// 发送新好友事件
-	global.Bus.Publish(domainEnum.FriendNewEvent, model.UserFriend{
-		UID:       uid,
-		FriendUID: friendUid,
-	})
+	userFriendMsg, err := json.Marshal(*userFriends[0])
+	if err != nil {
+		global.Logger.Errorf("json序列化失败 %v", err)
+	}
+	msg := &primitive.Message{
+		Topic: domainEnum.NewFriendTopic,
+		Body:  userFriendMsg,
+	}
+	_, err = global.RocketProducer.SendSync(ctx, msg)
+	if err != nil {
+		global.Logger.Errorf("发送新好友事件失败 %s", err)
+	}
 	return nil
 }
 
