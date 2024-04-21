@@ -47,8 +47,11 @@ func SuccessResponseWithMsg(c *gin.Context, msg string) {
 		Data:    nil,
 	})
 }
-func ReturnResponse(c *gin.Context, response ResponseData) {
+func ReturnSuccessResponse(c *gin.Context, response ResponseData) {
 	c.JSON(e.SUCCESS, response)
+}
+func ReturnErrorResponse(c *gin.Context, response ResponseData) {
+	c.JSON(e.ERROR, response)
 }
 
 // ErrorResponseData 是一个辅助函数，用于创建错误响应

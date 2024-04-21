@@ -27,7 +27,7 @@ import (
 var q *query.Query = global.Query
 
 // RegisterService 用户注册
-func RegisterService(userReq req.UserRegisterReq) resp.ResponseData {
+func RegisterService(userReq req.UserRegisterReq) (resp.ResponseData, error) {
 	ctx := context.Background()
 	user := global.Query.User
 	userQ := user.WithContext(ctx)
@@ -38,12 +38,12 @@ func RegisterService(userReq req.UserRegisterReq) resp.ResponseData {
 	err := utils.GetData(domainEnum.User+userReq.Name, &userR, fun)
 	// 查到了
 	if err == nil {
-		return resp.ErrorResponseData("用户已存在")
+		return resp.ErrorResponseData("用户已存在"), errors.New("Business Error")
 	}
 	// 有error
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		global.Logger.Errorf("查询数据失败: %v", err)
-		return resp.ErrorResponseData("系统繁忙，请稍后再试~")
+		return resp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 	// 创建用户
 	newUser := model.User{
@@ -53,13 +53,13 @@ func RegisterService(userReq req.UserRegisterReq) resp.ResponseData {
 	}
 	// 创建对象
 	if err := userQ.Omit(user.OpenID).Create(&newUser); err != nil {
-		return resp.ErrorResponseData("系统繁忙，请稍后再试~")
+		return resp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
-	return resp.SuccessResponseDataWithMsg("success")
+	return resp.SuccessResponseDataWithMsg("success"), nil
 }
 
 // LoginService 用户登录
-func LoginService(loginReq req.UserLoginReq) resp.ResponseData {
+func LoginService(loginReq req.UserLoginReq) (resp.ResponseData, error) {
 	ctx := context.Background()
 	user := query.User
 	userQ := user.WithContext(ctx)
@@ -72,13 +72,13 @@ func LoginService(loginReq req.UserLoginReq) resp.ResponseData {
 	err := utils.GetData(domainEnum.User+loginReq.Name, &userR, fun)
 	if err != nil {
 		global.Logger.Errorf("查询数据失败: %v", err)
-		return resp.ErrorResponseData("系统繁忙，请稍后再试~")
+		return resp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 	//生成jwt
 	token, err := utils.GenerateToken(userR.ID)
 	if err != nil {
 		global.Logger.Errorf("生成jwt失败 %v", err)
-		return resp.ErrorResponseData("系统繁忙，请稍后再试~")
+		return resp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 	// 发送用户登录事件
 	userByte, err := json.Marshal(userR)
@@ -90,7 +90,7 @@ func LoginService(loginReq req.UserLoginReq) resp.ResponseData {
 		Body:  userByte,
 	}
 	_, _ = global.RocketProducer.SendSync(ctx, msg)
-	return resp.SuccessResponseData(token)
+	return resp.SuccessResponseData(token), nil
 }
 
 // IsFriend 是否为好友关系

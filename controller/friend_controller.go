@@ -24,8 +24,13 @@ func ApplyFriendController(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	response := service.ApplyFriendService(uid, applyReq)
-	resp.ReturnResponse(c, response)
+	response, err := service.ApplyFriendService(uid, applyReq)
+	if err != nil {
+		c.Abort()
+		resp.ReturnErrorResponse(c, response)
+		return
+	}
+	resp.ReturnSuccessResponse(c, response)
 	return
 }
 
@@ -44,8 +49,13 @@ func DeleteFriendController(c *gin.Context) {
 		resp.ErrorResponse(c, "参数错误")
 		return
 	}
-	response := service.DeleteFriendService(uid, deleteFriendReq)
-	resp.ReturnResponse(c, response)
+	response, err := service.DeleteFriendService(uid, deleteFriendReq)
+	if err != nil {
+		c.Abort()
+		resp.ReturnErrorResponse(c, response)
+		return
+	}
+	resp.ReturnSuccessResponse(c, response)
 }
 
 // AgreeFriendController 同意好友申请
@@ -64,6 +74,11 @@ func AgreeFriendController(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	response := service.AgreeFriendService(uid, agreeFriendReq.Uid)
-	resp.ReturnResponse(c, response)
+	response, err := service.AgreeFriendService(uid, agreeFriendReq.Uid)
+	if err != nil {
+		c.Abort()
+		resp.ReturnErrorResponse(c, response)
+		return
+	}
+	resp.ReturnSuccessResponse(c, response)
 }
