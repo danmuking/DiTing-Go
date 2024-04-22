@@ -339,11 +339,19 @@ func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (resp.R
 
 	contact := global.Query.Contact
 	contactTx := tx.Contact.WithContext(ctx)
-	if _, err := contactTx.Where(contact.RoomID.Eq(roomFriendR.RoomID)).Delete(); err != nil {
+	resultInfo, err := contactTx.Where(contact.RoomID.Eq(roomFriendR.RoomID)).Delete()
+	if err != nil {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 		}
 		global.Logger.Errorf("删除会话失败 %s", err.Error())
+		return resp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
+	}
+	if resultInfo.RowsAffected == 0 {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
+		}
+		global.Logger.Errorf("会话不存在 %d", roomFriendR.RoomID)
 		return resp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
 	}
 	// TODO:删除缓存
