@@ -12,10 +12,7 @@ import (
 	"DiTing-Go/utils/jsonUtils"
 	"DiTing-Go/utils/redisCache"
 	"context"
-	"encoding/json"
 	"fmt"
-	"github.com/apache/rocketmq-client-go/v2/primitive"
-	"github.com/go-redsync/redsync/v4"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
 	"sort"
@@ -153,21 +150,14 @@ func IsFriend(uid, friendUid int64) (bool, error) {
 }
 
 func AgreeFriendService(uid, friendUid int64) (resp.ResponseData, error) {
-
-	ctx := context.Background()
-	mutex := global.RedSync.NewMutex(domainEnum.UserLock + strconv.FormatInt(uid, 10))
-	if err := mutex.LockContext(ctx); err != nil {
-		global.Logger.Errorf("加锁失败 %s", err)
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+	key := domainEnum.UserLock + strconv.FormatInt(uid, 10)
+	mutex, err := utils.GetLock(key)
+	if err != nil {
+		return resp.ErrorResponseData("系统正忙，请稍后再试"), err
 	}
-	defer func(mutex *redsync.Mutex) {
-		_, err := mutex.Unlock()
-		if err != nil {
-			global.Logger.Errorf("解锁失败 %s", err)
-		}
-	}(mutex)
+	defer utils.ReleaseLock(mutex)
 
-	err := AgreeFriend(uid, friendUid)
+	err = AgreeFriend(uid, friendUid)
 	if err != nil {
 		global.Logger.Errorf("同意好友请求失败 %s", err)
 		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
@@ -264,17 +254,13 @@ func AgreeFriend(uid, friendUid int64) error {
 	}
 
 	// 发送新好友事件
-	userFriendMsg, err := json.Marshal(*userFriends[0])
+	err = jsonUtils.SendMsgSync(domainEnum.NewFriendTopic, userFriends[0])
 	if err != nil {
-		global.Logger.Errorf("json序列化失败 %v", err)
-	}
-	msg := &primitive.Message{
-		Topic: domainEnum.NewFriendTopic,
-		Body:  userFriendMsg,
-	}
-	_, err = global.RocketProducer.SendSync(ctx, msg)
-	if err != nil {
-		global.Logger.Errorf("发送新好友事件失败 %s", err)
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
+		}
+		global.Logger.Errorf("发送新好友事件失败 %s", err.Error())
+		return err
 	}
 	return nil
 }
