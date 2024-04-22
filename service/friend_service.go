@@ -16,18 +16,18 @@ import (
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
 	"sort"
-	"strconv"
 )
 
 // ApplyFriendService 添加好友
-// TODO：考虑软删除条件
 func ApplyFriendService(uid int64, applyReq req.UserApplyReq) (resp.ResponseData, error) {
 	ctx := context.Background()
 	friendUid := applyReq.Uid
 	user := global.Query.User
 	userQ := user.WithContext(ctx)
 
-	key := domainEnum.UserLock + strconv.FormatInt(uid, 10)
+	uids := utils.Int64Slice{uid, friendUid}
+	sort.Sort(uids)
+	key := fmt.Sprintf(domainEnum.UserAndFriendLock, uids[0], uids[1])
 	mutex, err := utils.GetLock(key)
 	if err != nil {
 		return resp.ErrorResponseData("系统正忙，请稍后再试"), err
@@ -150,7 +150,10 @@ func IsFriend(uid, friendUid int64) (bool, error) {
 }
 
 func AgreeFriendService(uid, friendUid int64) (resp.ResponseData, error) {
-	key := domainEnum.UserLock + strconv.FormatInt(uid, 10)
+
+	uids := utils.Int64Slice{uid, friendUid}
+	sort.Sort(uids)
+	key := fmt.Sprintf(domainEnum.UserAndFriendLock, uids[0], uids[1])
 	mutex, err := utils.GetLock(key)
 	if err != nil {
 		return resp.ErrorResponseData("系统正忙，请稍后再试"), err
@@ -270,14 +273,17 @@ func AgreeFriend(uid, friendUid int64) error {
 func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (resp.ResponseData, error) {
 	ctx := context.Background()
 
-	key := domainEnum.UserLock + strconv.FormatInt(uid, 10)
+	deleteFriendUid := deleteFriendReq.Uid
+
+	uids := utils.Int64Slice{uid, deleteFriendUid}
+	sort.Sort(uids)
+	key := fmt.Sprintf(domainEnum.UserAndFriendLock, uids[0], uids[1])
 	mutex, err := utils.GetLock(key)
 	if err != nil {
 		return resp.ErrorResponseData("系统正忙，请稍后再试"), err
 	}
 	defer utils.ReleaseLock(mutex)
 
-	deleteFriendUid := deleteFriendReq.Uid
 	// 判断是否为好友
 	isFriend, err := IsFriend(uid, deleteFriendUid)
 	if err != nil {
@@ -316,7 +322,7 @@ func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (resp.R
 	// 删除会话
 	roomFriend := global.Query.RoomFriend
 	roomFriendTx := tx.RoomFriend.WithContext(ctx)
-	uids := utils.Int64Slice{uid, deleteFriendUid}
+	uids = utils.Int64Slice{uid, deleteFriendUid}
 	sort.Sort(uids)
 	fun := func() (interface{}, error) {
 		return roomFriendTx.Where(roomFriend.Uid1.Eq(uids[0]), roomFriend.Uid2.Eq(uids[1])).First()

@@ -64,7 +64,11 @@ func friendNewEvent(ctx context.Context, ext ...*primitive.MessageExt) (consumer
 func friendNew(userFriend model.UserFriend) error {
 	ctx := context.Background()
 
-	key := enum.UserLock + strconv.FormatInt(userFriend.UID, 10)
+	uid := userFriend.UID
+	friendUid := userFriend.FriendUID
+	uids := utils.Int64Slice{uid, friendUid}
+	sort.Sort(uids)
+	key := fmt.Sprintf(enum.UserAndFriendLock, uids[0], uids[1])
 	mutex, err := utils.GetLock(key)
 	if err != nil {
 		return err
@@ -93,7 +97,7 @@ func friendNew(userFriend model.UserFriend) error {
 	}
 
 	// 排序，uid小的在前
-	uids := utils.Int64Slice{userFriend.UID, userFriend.FriendUID}
+	uids = utils.Int64Slice{userFriend.UID, userFriend.FriendUID}
 	sort.Sort(uids)
 
 	//检查是否有软删除状态的记录

@@ -17,7 +17,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"sort"
-	"strconv"
 )
 
 func init() {
@@ -62,7 +61,9 @@ func deleteFriend(deleteFriendDto dto.DeleteFriendDto) error {
 	deleteFriendUid := deleteFriendDto.FriendUid
 
 	// 加锁
-	key := enum.UserLock + strconv.FormatInt(uid, 10)
+	uids := utils.Int64Slice{uid, deleteFriendUid}
+	sort.Sort(uids)
+	key := fmt.Sprintf(enum.UserAndFriendLock, uids[0], uids[1])
 	mutex, err := utils.GetLock(key)
 	if err != nil {
 		return err
@@ -98,7 +99,7 @@ func deleteFriend(deleteFriendDto dto.DeleteFriendDto) error {
 	// 软删除好友房间
 	roomFriend := global.Query.RoomFriend
 	roomFriendTx := tx.RoomFriend.WithContext(ctx)
-	uids := utils.Int64Slice{uid, deleteFriendUid}
+	uids = utils.Int64Slice{uid, deleteFriendUid}
 	sort.Sort(uids)
 	fun := func() (interface{}, error) {
 		return roomFriendTx.Where(roomFriend.Uid1.Eq(uids[0]), roomFriend.Uid2.Eq(uids[1])).First()
