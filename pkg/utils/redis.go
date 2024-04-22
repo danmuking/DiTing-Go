@@ -29,7 +29,7 @@ func GetString(key string, value any) error {
 	}
 	err = json.Unmarshal([]byte(valueByte), value)
 	if err != nil {
-		return errors.New("json unmarshal error")
+		return errors.New("jsonUtils unmarshal error")
 	}
 	return nil
 }

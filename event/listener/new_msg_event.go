@@ -59,7 +59,7 @@ func UpdateContactEvent(ctx context.Context, ext ...*primitive.MessageExt) (cons
 		msgByte := ext[i].Message.Body
 		err := json.Unmarshal(msgByte, &msg)
 		if err != nil {
-			global.Logger.Errorf("json unmarshal error: %s", err.Error())
+			global.Logger.Errorf("jsonUtils unmarshal error: %s", err.Error())
 			return consumer.ConsumeRetryLater, nil
 		}
 		err = updateContact(msg)
@@ -130,7 +130,7 @@ func SendMsgEvent(ctx context.Context, ext ...*primitive.MessageExt) (consumer.C
 		msgByte := ext[i].Message.Body
 		err := json.Unmarshal(msgByte, &msg)
 		if err != nil {
-			global.Logger.Errorf("json unmarshal error: %s", err.Error())
+			global.Logger.Errorf("jsonUtils unmarshal error: %s", err.Error())
 			return consumer.ConsumeRetryLater, nil
 		}
 		err = sendMsg(msg)

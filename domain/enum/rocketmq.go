@@ -1,7 +1,8 @@
 package enum
 
 const (
-	UserLoginTopic  = "diting-login"
-	NewFriendTopic  = "diting-new-friend"
-	NewMessageTopic = "diting-new-message"
+	UserLoginTopic    = "diting-login"
+	NewFriendTopic    = "diting-new-friend"
+	NewMessageTopic   = "diting-new-message"
+	DeleteFriendTopic = "diting-delete-friend"
 )
