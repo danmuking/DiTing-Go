@@ -30,25 +30,20 @@ func ApplyFriendService(uid int64, applyReq req.UserApplyReq) (resp.ResponseData
 	user := global.Query.User
 	userQ := user.WithContext(ctx)
 
-	mutex := global.RedSync.NewMutex(domainEnum.UserLock + strconv.FormatInt(uid, 10))
-	if err := mutex.LockContext(ctx); err != nil {
-		global.Logger.Errorf("加锁失败 %s", err)
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+	key := domainEnum.UserLock + strconv.FormatInt(uid, 10)
+	mutex, err := utils.GetLock(key)
+	if err != nil {
+		return resp.ErrorResponseData("系统正忙，请稍后再试"), err
 	}
-	defer func(mutex *redsync.Mutex) {
-		_, err := mutex.Unlock()
-		if err != nil {
-			global.Logger.Errorf("解锁失败 %s", err)
-		}
-	}(mutex)
+	defer utils.ReleaseLock(mutex)
 
 	//检查用户是否存在
 	fun := func() (interface{}, error) {
 		return userQ.Where(user.ID.Eq(friendUid)).First()
 	}
 	userR := model.User{}
-	key := fmt.Sprintf(domainEnum.UserCacheByID, applyReq.Uid)
-	err := utils.GetData(key, &userR, fun)
+	key = fmt.Sprintf(domainEnum.UserCacheByID, applyReq.Uid)
+	err = utils.GetData(key, &userR, fun)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return resp.ErrorResponseData("用户不存在"), errors.New("Business Error")
@@ -119,13 +114,17 @@ func ApplyFriendService(uid int64, applyReq req.UserApplyReq) (resp.ResponseData
 		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 	}
 	// 发送好友申请事件
-	global.Bus.Publish(domainEnum.FriendApplyEvent, model.UserApply{
+	err = jsonUtils.SendMsgSync(domainEnum.FriendApplyTopic, model.UserApply{
 		UID:        uid,
 		TargetID:   friendUid,
 		Msg:        applyReq.Msg,
 		Status:     enum.NO,
 		ReadStatus: enum.NO,
 	})
+	if err != nil {
+		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+	}
+
 	return resp.SuccessResponseData(nil), nil
 }
 
@@ -368,7 +367,7 @@ func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (resp.R
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 		}
 		global.Logger.Errorf("发送删除好友事件失败 %s", err.Error())
-		return resp.ResponseData{}, err
+		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 	}
 
 	if err := tx.Commit(); err != nil {

@@ -7,7 +7,6 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/jinzhu/copier"
 	"github.com/pkg/errors"
-	"gorm.io/gorm"
 )
 
 // SetString 设置字符串
@@ -56,9 +55,6 @@ func QueryAndSet(cacheKey string, value any, dbQueryFunc func() (interface{}, er
 	// 2. 从数据库中获取数据
 	result, err := dbQueryFunc()
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			global.Logger.Errorf("查询数据库失败: %v", err)
-		}
 		return err
 	}
 	err = copier.Copy(value, result)
