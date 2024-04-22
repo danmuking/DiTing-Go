@@ -33,9 +33,11 @@
 | Redis       | 缓存加速，多数据结构支持业务功能 |https://redis.io|
 | Jwt         | 用户登录，认证方案        |https://jwt.io|
 | Swagger-UI	 | API文档生成工具        |https://github.com/swagger-api/swagger-ui|
+| Redsync	    | GO的分布式锁工具        |https://github.com/go-redsync/redsync|
+| RocketMQ	   | 低延迟、高并发、高可用、高可靠的分布式消息中间件        |https://rocketmq.apache.org/|
 
 ### Star 趋势
-<img alt="Star History Chart" src="https://api.star-history.com/svg?repos=danmuking/DiTing&amp;type=Date"/>
+<img alt="Star History Chart" src="https://api.star-history.com/svg?repos=danmuking/DiTing-Go&type=Date"/>
 
 ### 贡献者
 
