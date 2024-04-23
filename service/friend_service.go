@@ -121,7 +121,7 @@ func ApplyFriendService(uid int64, applyReq req.UserApplyReq) (resp.ResponseData
 	if err != nil {
 		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 	}
-
+	//time.Sleep(30 * time.Second)
 	return resp.SuccessResponseData(nil), nil
 }
 
