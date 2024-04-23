@@ -2,6 +2,7 @@ package controller
 
 import (
 	"DiTing-Go/domain/vo/req"
+	cursorUtils "DiTing-Go/pkg/cursor"
 	"DiTing-Go/pkg/resp"
 	"DiTing-Go/service"
 	"github.com/gin-gonic/gin"
@@ -80,5 +81,30 @@ func AgreeFriendController(c *gin.Context) {
 		resp.ReturnErrorResponse(c, response)
 		return
 	}
+	resp.ReturnSuccessResponse(c, response)
+}
+
+// GetUserApplyController 同意好友申请
+//
+//	@Summary	同意好友申请
+//	@Produce	json
+//	@Param		uid	body		int					true	"好友uid"
+//	@Success	200	{object}	resp.ResponseData	"成功"
+//	@Failure	500	{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/user/getApplyList [get]
+func GetUserApplyController(c *gin.Context) {
+	uid := c.GetInt64("uid")
+	pageRequest := cursorUtils.PageReq{}
+	if err := c.ShouldBindQuery(&pageRequest); err != nil { //ShouldBind()会自动推导
+		resp.ErrorResponse(c, "参数错误")
+		return
+	}
+	response, err := service.GetUserApplyService(uid, pageRequest)
+	if err != nil {
+		c.Abort()
+		resp.ReturnErrorResponse(c, response)
+		return
+	}
+
 	resp.ReturnSuccessResponse(c, response)
 }

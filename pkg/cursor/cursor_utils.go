@@ -28,8 +28,8 @@ func Paginate(db *gorm.DB, params PageReq, result interface{}, cursorFieldName s
 		query = query.Where(conditions[0], conditions[1:]...)
 	}
 
-	if params.Cursor != nil {
-		query = query.Where(fmt.Sprintf("%s > ?", cursorFieldName), *params.Cursor)
+	if params.Cursor != nil && *params.Cursor != "" {
+		query = query.Where(fmt.Sprintf("%s < ?", cursorFieldName), *params.Cursor)
 	}
 
 	if isAsc {

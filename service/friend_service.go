@@ -1,11 +1,14 @@
 package service
 
 import (
+	"DiTing-Go/dal"
 	"DiTing-Go/dal/model"
 	"DiTing-Go/domain/dto"
 	domainEnum "DiTing-Go/domain/enum"
 	"DiTing-Go/domain/vo/req"
+	domainResp "DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
+	"DiTing-Go/pkg/cursor"
 	"DiTing-Go/pkg/enum"
 	"DiTing-Go/pkg/resp"
 	"DiTing-Go/pkg/utils"
@@ -13,9 +16,11 @@ import (
 	"DiTing-Go/utils/redisCache"
 	"context"
 	"fmt"
+	"github.com/jinzhu/copier"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
 	"sort"
+	"strconv"
 )
 
 // ApplyFriendService 添加好友
@@ -376,4 +381,49 @@ func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (resp.R
 	}
 
 	return resp.SuccessResponseData(nil), nil
+}
+
+// GetUserApplyService 获取好友申请列表
+func GetUserApplyService(uid int64, pageReq cursor.PageReq) (resp.ResponseData, error) {
+	ctx := context.Background()
+	// 获取 UserApply 表中 TargetID 等于 uid(登录用户ID)的用户ID集合，采用游标分页
+	db := dal.DB
+	userApplys := make([]model.UserApply, 0)
+	condition := []interface{}{"target_id=?", strconv.FormatInt(uid, 10)}
+	pageResp, err := cursor.Paginate(db, pageReq, &userApplys, "create_time", false, condition...)
+	if err != nil {
+		global.Logger.Errorf("查询好友申请表失败 %s", err)
+		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+	}
+
+	uids := make([]int64, 0)
+	n := len(userApplys)
+	for i := 0; i < n; i++ {
+		uids = append(uids, userApplys[i].UID)
+	}
+
+	user := global.Query.User
+	// 根据 uids 集合查询 User 表
+	users, err := user.WithContext(ctx).Select(user.ID, user.Name, user.Avatar).Where(user.ID.In(uids...)).Find()
+	if err != nil {
+		global.Logger.Errorf("查询用户表失败 %s", err)
+		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+	}
+
+	if len(users) != len(userApplys) {
+		global.Logger.Errorf("用户表和好友申请表数据不匹配")
+		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+	}
+	var usersVO = make([]domainResp.UserApplyResp, 0)
+	// 数据转换
+	for i := 0; i < len(users); i++ {
+		var userVO domainResp.UserApplyResp
+		_ = copier.Copy(&userVO, &users[i])
+		userVO.Msg = userApplys[i].Msg
+		userVO.Status = userApplys[i].Status
+		usersVO = append(usersVO, userVO)
+	}
+	pageResp.Data = usersVO
+
+	return resp.SuccessResponseData(pageResp), nil
 }

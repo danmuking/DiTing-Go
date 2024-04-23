@@ -52,7 +52,7 @@ func initGin() {
 		//同意好友申请
 		apiUser.PUT("/agree", controller.AgreeFriendController)
 		//获取好友申请列表
-		apiUser.GET("/getApplyList", service.GetApplyList)
+		apiUser.GET("/getApplyList", controller.GetUserApplyController)
 		//获取好友列表
 		apiUser.GET("/getFriendList", service.GetFriendList)
 		//判断是否是好友
