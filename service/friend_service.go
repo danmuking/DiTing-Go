@@ -435,6 +435,7 @@ func GetUserApplyService(uid int64, pageReq cursor.PageReq) (resp.ResponseData, 
 		usersVO = append(usersVO, userVO)
 	}
 	pageResp.Data = usersVO
+	// TODO 修改未读状态
 
 	return resp.SuccessResponseData(pageResp), nil
 }
