@@ -435,7 +435,15 @@ func GetUserApplyService(uid int64, pageReq cursor.PageReq) (resp.ResponseData, 
 		usersVO = append(usersVO, userVO)
 	}
 	pageResp.Data = usersVO
-	// TODO 修改未读状态
+
+	userApply := global.Query.UserApply
+	userApplyQ := global.Query.UserApply.WithContext(ctx)
+	// 更新已读状态
+	_, err = userApplyQ.Where(userApply.TargetID.Eq(uid), userApply.ReadStatus.Eq(enum.NO)).Update(userApply.ReadStatus, enum.YES)
+	if err != nil {
+		global.Logger.Errorf("更新好友申请表失败 %s", err)
+		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+	}
 
 	return resp.SuccessResponseData(pageResp), nil
 }
