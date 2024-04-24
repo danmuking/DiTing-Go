@@ -58,7 +58,7 @@ func initGin() {
 		// 判断是否是好友
 		apiUser.GET("/isFriend/:friendUid", controller.IsFriendController)
 		//好友申请未读数量
-		apiUser.GET("/unreadApplyNum", service.UnreadApplyNum)
+		apiUser.GET("/unreadApplyNum", controller.UnreadApplyNumController)
 		// TODO:测试使用
 		apiUser.GET("/test", test)
 	}

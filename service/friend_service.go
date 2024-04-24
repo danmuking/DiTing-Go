@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"github.com/jinzhu/copier"
 	"github.com/pkg/errors"
+	"gorm.io/gen"
 	"gorm.io/gorm"
 	"sort"
 	"strconv"
@@ -436,4 +437,20 @@ func GetUserApplyService(uid int64, pageReq cursor.PageReq) (resp.ResponseData, 
 	pageResp.Data = usersVO
 
 	return resp.SuccessResponseData(pageResp), nil
+}
+
+func UnreadApplyNumService(uid int64) (resp.ResponseData, error) {
+	ctx := context.Background()
+	userApply := global.Query.UserApply
+	userApplyQ := userApply.WithContext(ctx)
+
+	// TODO 直接count
+	// 获取 UserApply 表中 TargetID 等于 uid(登录用户ID)的用户ID集合
+	subQuery := userApplyQ.Where(userApply.TargetID.Eq(uid), userApply.ReadStatus.Eq(enum.NO)).Limit(99)
+	num, err := gen.Table(subQuery.As("t")).Count()
+	if err != nil {
+		global.Logger.Errorf("查询好友申请表失败 %s", err)
+		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+	}
+	return resp.SuccessResponseData(num), nil
 }

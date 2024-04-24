@@ -9,7 +9,6 @@ import (
 	resp2 "DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
 	cursorUtils "DiTing-Go/pkg/cursor"
-	"DiTing-Go/pkg/enum"
 	"DiTing-Go/pkg/resp"
 	_ "DiTing-Go/pkg/setting"
 	"DiTing-Go/pkg/utils"
@@ -94,30 +93,6 @@ func LoginService(loginReq req.UserLoginReq) (resp.ResponseData, error) {
 	}
 	_, _ = global.RocketProducer.SendSync(ctx, msg)
 	return resp.SuccessResponseData(token), nil
-}
-
-// UnreadApplyNum 好友申请未读数量
-//
-//	@Summary	好友申请未读数量
-//	@Success	200			{object}	resp.ResponseData	"成功"
-//	@Failure	500			{object}	resp.ResponseData	"内部错误"
-//	@Router		/api/public/login [post]
-func UnreadApplyNum(c *gin.Context) {
-	ctx := context.Background()
-
-	uid := c.GetInt64("uid")
-
-	ua := query.UserApply
-
-	// 获取 UserApply 表中 TargetID 等于 uid(登录用户ID)的用户ID集合
-	num, err := ua.WithContext(ctx).Where(ua.TargetID.Eq(uid), ua.ReadStatus.Eq(enum.NO), ua.Status.Eq(enum.NO)).Count()
-	if err != nil {
-		log.Printf("DB excete Sql happen [ERROR], err msg is : %v", err)
-		resp.ErrorResponse(c, "系统繁忙，亲稍后再试")
-		c.Abort()
-		return
-	}
-	resp.SuccessResponse(c, num)
 }
 
 // GetFriendList 获取好友列表
