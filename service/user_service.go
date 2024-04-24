@@ -96,33 +96,6 @@ func LoginService(loginReq req.UserLoginReq) (resp.ResponseData, error) {
 	return resp.SuccessResponseData(token), nil
 }
 
-// IsFriend 是否为好友关系
-//
-//	@Summary	是否为好友关系
-//	@Produce	json
-//	@Param		uid	body		int					true	"好友uid"
-//	@Success	200	{object}	resp.ResponseData	"成功"
-//	@Failure	500	{object}	resp.ResponseData	"内部错误"
-//	@Router		/api/contact/isFriend/:friendUid [get]
-func IsFriends(c *gin.Context) {
-	uid := c.GetInt64("uid")
-	friendUid, _ := strconv.ParseInt(c.Param("friendUid"), 10, 64)
-	resp.SuccessResponse(c, isFriends(c, uid, int64(friendUid)))
-}
-
-func isFriends(c *gin.Context, uid, friendUid int64) bool {
-	// 检查是否已经是好友关系
-	friend, err := query.UserFriend.WithContext(context.Background()).Where(query.UserFriend.UID.Eq(uid), query.UserFriend.FriendUID.Eq(friendUid)).First()
-	if err != nil && err.Error() != "record not found" {
-		resp.ErrorResponse(c, "参数错误")
-		c.Abort()
-	}
-	if friend == nil {
-		return false
-	}
-	return true
-}
-
 // UnreadApplyNum 好友申请未读数量
 //
 //	@Summary	好友申请未读数量

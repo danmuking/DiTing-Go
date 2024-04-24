@@ -55,8 +55,8 @@ func initGin() {
 		apiUser.GET("/getApplyList", controller.GetUserApplyController)
 		//获取好友列表
 		apiUser.GET("/getFriendList", service.GetFriendList)
-		//判断是否是好友
-		apiUser.GET("/isFriend/:friendUid", service.IsFriends)
+		// 判断是否是好友
+		apiUser.GET("/isFriend/:friendUid", controller.IsFriendController)
 		//好友申请未读数量
 		apiUser.GET("/unreadApplyNum", service.UnreadApplyNum)
 		// TODO:测试使用

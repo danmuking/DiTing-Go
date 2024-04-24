@@ -130,6 +130,16 @@ func ApplyFriendService(uid int64, applyReq req.UserApplyReq) (resp.ResponseData
 	return resp.SuccessResponseData(nil), nil
 }
 
+// IsFriendService 判断是否是好友
+func IsFriendService(uid, friendUid int64) (resp.ResponseData, error) {
+	isFriend, err := IsFriend(uid, friendUid)
+	if err != nil {
+		global.Logger.Errorf("判断好友关系失败 %s", err)
+		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+	}
+	return resp.SuccessResponseData(isFriend), nil
+}
+
 // IsFriend 判断是否是好友
 func IsFriend(uid, friendUid int64) (bool, error) {
 	ctx := context.Background()

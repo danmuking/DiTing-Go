@@ -108,3 +108,27 @@ func GetUserApplyController(c *gin.Context) {
 
 	resp.ReturnSuccessResponse(c, response)
 }
+
+// IsFriendController 是否为好友关系
+//
+//	@Summary	是否为好友关系
+//	@Produce	json
+//	@Param		uid	body		int					true	"好友uid"
+//	@Success	200	{object}	resp.ResponseData	"成功"
+//	@Failure	500	{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/user/isFriend/:friendUid [get]
+func IsFriendController(c *gin.Context) {
+	uid := c.GetInt64("uid")
+	isFriendReq := req.IsFriendReq{}
+	if err := c.ShouldBindUri(&isFriendReq); err != nil {
+		resp.ErrorResponse(c, "参数错误")
+		return
+	}
+	response, err := service.IsFriendService(uid, isFriendReq.FriendUid)
+	if err != nil {
+		c.Abort()
+		resp.ReturnErrorResponse(c, response)
+		return
+	}
+	resp.ReturnSuccessResponse(c, response)
+}
