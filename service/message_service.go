@@ -4,7 +4,7 @@ import (
 	"DiTing-Go/dal/model"
 	"DiTing-Go/domain/enum"
 	"DiTing-Go/global"
-	"DiTing-Go/pkg/resp"
+	"DiTing-Go/pkg/domain/vo/resp"
 	"bytes"
 	"context"
 	"github.com/gin-gonic/gin"

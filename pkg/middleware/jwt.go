@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"DiTing-Go/pkg/resp"
+	"DiTing-Go/pkg/domain/vo/resp"
 	"DiTing-Go/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"strings"

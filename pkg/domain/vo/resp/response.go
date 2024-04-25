@@ -1,7 +1,7 @@
 package resp
 
 import (
-	"DiTing-Go/pkg/e"
+	"DiTing-Go/pkg/domain/enum"
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,8 +19,8 @@ type ResponseData struct {
 //	code int：500
 //	message string：响应消息，用于描述响应的错误信息或提示信息
 func ErrorResponse(c *gin.Context, message string) {
-	c.JSON(e.ERROR, ResponseData{
-		Code:    e.ERROR,
+	c.JSON(enum.ERROR, ResponseData{
+		Code:    enum.ERROR,
 		Message: message,
 		Data:    nil,
 	})
@@ -33,31 +33,31 @@ func ErrorResponse(c *gin.Context, message string) {
 //	code int：200
 //	data interface{}：响应数据，用于描述请求处理成功后返回的具体数据
 func SuccessResponse(c *gin.Context, data interface{}) {
-	c.JSON(e.SUCCESS, ResponseData{
-		Code:    e.SUCCESS,
+	c.JSON(enum.SUCCESS, ResponseData{
+		Code:    enum.SUCCESS,
 		Message: "success",
 		Data:    data,
 	})
 }
 
 func SuccessResponseWithMsg(c *gin.Context, msg string) {
-	c.JSON(e.SUCCESS, ResponseData{
-		Code:    e.SUCCESS,
+	c.JSON(enum.SUCCESS, ResponseData{
+		Code:    enum.SUCCESS,
 		Message: msg,
 		Data:    nil,
 	})
 }
 func ReturnSuccessResponse(c *gin.Context, response ResponseData) {
-	c.JSON(e.SUCCESS, response)
+	c.JSON(enum.SUCCESS, response)
 }
 func ReturnErrorResponse(c *gin.Context, response ResponseData) {
-	c.JSON(e.ERROR, response)
+	c.JSON(enum.ERROR, response)
 }
 
 // ErrorResponseData 是一个辅助函数，用于创建错误响应
 func ErrorResponseData(msg string) ResponseData {
 	return ResponseData{
-		Code:    e.ERROR,
+		Code:    enum.ERROR,
 		Message: msg,
 		Data:    nil,
 	}
@@ -66,7 +66,7 @@ func ErrorResponseData(msg string) ResponseData {
 // SuccessResponseData 是一个辅助函数，用于创建成功响应
 func SuccessResponseData(data interface{}) ResponseData {
 	return ResponseData{
-		Code:    e.SUCCESS,
+		Code:    enum.SUCCESS,
 		Message: "success",
 		Data:    data,
 	}
@@ -75,7 +75,7 @@ func SuccessResponseData(data interface{}) ResponseData {
 // SuccessResponseDataWithMsg 是一个辅助函数，用于创建成功响应
 func SuccessResponseDataWithMsg(msg string) ResponseData {
 	return ResponseData{
-		Code:    e.SUCCESS,
+		Code:    enum.SUCCESS,
 		Message: msg,
 		Data:    nil,
 	}

@@ -1,4 +1,4 @@
-package e
+package enum
 
 var MsgFlags = map[int]string{
 	SUCCESS:                        "ok",

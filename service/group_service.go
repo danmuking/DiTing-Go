@@ -6,8 +6,8 @@ import (
 	"DiTing-Go/domain/enum"
 	"DiTing-Go/domain/vo/req"
 	"DiTing-Go/global"
-	"DiTing-Go/pkg/cursor"
-	"DiTing-Go/pkg/resp"
+	"DiTing-Go/pkg/domain/vo/resp"
+	pkgResp "DiTing-Go/pkg/domain/vo/resp"
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -595,7 +595,7 @@ func GetGroupMemberListService(c *gin.Context) {
 	}
 
 	newCursor := genCursor(userR)
-	resp.SuccessResponse(c, cursor.PageResp{
+	resp.SuccessResponse(c, pkgResp.PageResp{
 		Cursor: &newCursor,
 		IsLast: len(userR) < getGroupMemberListReq.PageSize,
 		Data:   userR,

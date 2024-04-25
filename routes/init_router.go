@@ -3,8 +3,8 @@ package routes
 import (
 	"DiTing-Go/controller"
 	_ "DiTing-Go/docs"
+	"DiTing-Go/pkg/domain/vo/resp"
 	"DiTing-Go/pkg/middleware"
-	"DiTing-Go/pkg/resp"
 	"DiTing-Go/service"
 	"DiTing-Go/websocket/global"
 	websocketService "DiTing-Go/websocket/service"

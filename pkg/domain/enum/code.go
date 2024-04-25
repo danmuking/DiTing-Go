@@ -1,4 +1,4 @@
-package e
+package enum
 
 const (
 	SUCCESS        = 200

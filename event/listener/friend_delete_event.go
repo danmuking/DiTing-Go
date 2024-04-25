@@ -5,7 +5,7 @@ import (
 	"DiTing-Go/domain/dto"
 	"DiTing-Go/domain/enum"
 	"DiTing-Go/global"
-	pkgEnum "DiTing-Go/pkg/enum"
+	pkgEnum "DiTing-Go/pkg/domain/enum"
 	"DiTing-Go/pkg/utils"
 	"DiTing-Go/utils/jsonUtils"
 	"DiTing-Go/utils/redisCache"

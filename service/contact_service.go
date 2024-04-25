@@ -8,8 +8,10 @@ import (
 	domainModel "DiTing-Go/domain/model"
 	domainResp "DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
-	cursorUtils "DiTing-Go/pkg/cursor"
-	"DiTing-Go/pkg/resp"
+	pkgReq "DiTing-Go/pkg/domain/vo/req"
+	"DiTing-Go/pkg/domain/vo/resp"
+	pkgResp "DiTing-Go/pkg/domain/vo/resp"
+	"DiTing-Go/pkg/utils"
 	"context"
 	"github.com/gin-gonic/gin"
 	"strconv"
@@ -22,7 +24,7 @@ func GetContactListService(c *gin.Context) {
 	// 默认值
 	var cursor *string = nil
 	var pageSize int = 20
-	pageRequest := cursorUtils.PageReq{
+	pageRequest := pkgReq.PageReq{
 		Cursor:   cursor,
 		PageSize: pageSize,
 	}
@@ -44,11 +46,11 @@ func GetContactListService(c *gin.Context) {
 	return
 }
 
-func GetContactList(uid int64, pageRequest cursorUtils.PageReq) (*cursorUtils.PageResp, error) {
+func GetContactList(uid int64, pageRequest pkgReq.PageReq) (*pkgResp.PageResp, error) {
 	db := dal.DB
 	contact := make([]model.Contact, 0)
 	condition := []interface{}{"uid=?", strconv.FormatInt(uid, 10)}
-	pageResp, err := cursorUtils.Paginate(db, pageRequest, &contact, "active_time", false, condition...)
+	pageResp, err := utils.Paginate(db, pageRequest, &contact, "active_time", false, condition...)
 	if err != nil {
 		global.Logger.Errorf("查询会话列表失败 %s", err)
 		return nil, err
@@ -152,7 +154,7 @@ func GetContactDetailService(c *gin.Context) {
 	// 默认值
 	var cursor *string = nil
 	var pageSize int = 20
-	pageRequest := cursorUtils.PageReq{
+	pageRequest := pkgReq.PageReq{
 		Cursor:   cursor,
 		PageSize: pageSize,
 	}
@@ -184,13 +186,13 @@ func GetContactDetailService(c *gin.Context) {
 	return
 }
 
-func GetContactDetail(roomID int64, pageRequest cursorUtils.PageReq) (*cursorUtils.PageResp, error) {
+func GetContactDetail(roomID int64, pageRequest pkgReq.PageReq) (*pkgResp.PageResp, error) {
 	// 查询消息
 	db := dal.DB
 	msgs := make([]model.Message, 0)
 	// TODO: 抽象成常量
 	condition := []interface{}{"room_id=? AND status=?", strconv.FormatInt(roomID, 10), "0"}
-	pageResp, err := cursorUtils.Paginate(db, pageRequest, &msgs, "create_time", false, condition...)
+	pageResp, err := utils.Paginate(db, pageRequest, &msgs, "create_time", false, condition...)
 	if err != nil {
 		global.Logger.Errorf("查询消息失败: %s", err.Error())
 		return nil, err

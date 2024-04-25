@@ -1,6 +1,8 @@
-package cursor
+package utils
 
 import (
+	pkgReq "DiTing-Go/pkg/domain/vo/req"
+	pkgResp "DiTing-Go/pkg/domain/vo/resp"
 	"fmt"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
@@ -8,20 +10,10 @@ import (
 	"regexp"
 )
 
-type PageReq struct {
-	Cursor   *string `json:"cursor" form:"cursor"`
-	PageSize int     `json:"page_size" form:"page_size"`
-}
-type PageResp struct {
-	Cursor *string `json:"cursor" form:"cursor"`
-	IsLast bool    `json:"is_last" form:"is_last"`
-	Data   any     `json:"data" form:"data"`
-}
-
 // Paginate 是通用的游标分页函数
 // TODO: select部分字段
-func Paginate(db *gorm.DB, params PageReq, result interface{}, cursorFieldName string, isAsc bool, conditions ...interface{}) (*PageResp, error) {
-	var resp PageResp
+func Paginate(db *gorm.DB, params pkgReq.PageReq, result interface{}, cursorFieldName string, isAsc bool, conditions ...interface{}) (*pkgResp.PageResp, error) {
+	var resp pkgResp.PageResp
 
 	query := db
 	if len(conditions) > 0 {

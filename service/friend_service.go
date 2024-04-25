@@ -8,9 +8,9 @@ import (
 	"DiTing-Go/domain/vo/req"
 	domainResp "DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
-	"DiTing-Go/pkg/cursor"
-	"DiTing-Go/pkg/enum"
-	"DiTing-Go/pkg/resp"
+	"DiTing-Go/pkg/domain/enum"
+	pkgReq "DiTing-Go/pkg/domain/vo/req"
+	"DiTing-Go/pkg/domain/vo/resp"
 	"DiTing-Go/pkg/utils"
 	"DiTing-Go/utils/jsonUtils"
 	"DiTing-Go/utils/redisCache"
@@ -395,13 +395,13 @@ func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (resp.R
 }
 
 // GetUserApplyService 获取好友申请列表
-func GetUserApplyService(uid int64, pageReq cursor.PageReq) (resp.ResponseData, error) {
+func GetUserApplyService(uid int64, pageReq pkgReq.PageReq) (resp.ResponseData, error) {
 	ctx := context.Background()
 	// 获取 UserApply 表中 TargetID 等于 uid(登录用户ID)的用户ID集合，采用游标分页
 	db := dal.DB
 	userApplys := make([]model.UserApply, 0)
 	condition := []interface{}{"target_id=?", strconv.FormatInt(uid, 10)}
-	pageResp, err := cursor.Paginate(db, pageReq, &userApplys, "create_time", false, condition...)
+	pageResp, err := utils.Paginate(db, pageReq, &userApplys, "create_time", false, condition...)
 	if err != nil {
 		global.Logger.Errorf("查询好友申请表失败 %s", err)
 		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")

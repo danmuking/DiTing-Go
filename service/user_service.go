@@ -6,10 +6,10 @@ import (
 	"DiTing-Go/dal/query"
 	domainEnum "DiTing-Go/domain/enum"
 	"DiTing-Go/domain/vo/req"
-	resp2 "DiTing-Go/domain/vo/resp"
+	"DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
-	cursorUtils "DiTing-Go/pkg/cursor"
-	"DiTing-Go/pkg/resp"
+	pkgReq "DiTing-Go/pkg/domain/vo/req"
+	pkgResp "DiTing-Go/pkg/domain/vo/resp"
 	_ "DiTing-Go/pkg/setting"
 	"DiTing-Go/pkg/utils"
 	"context"
@@ -27,7 +27,7 @@ import (
 var q *query.Query = global.Query
 
 // RegisterService 用户注册
-func RegisterService(userReq req.UserRegisterReq) (resp.ResponseData, error) {
+func RegisterService(userReq req.UserRegisterReq) (pkgResp.ResponseData, error) {
 	ctx := context.Background()
 	user := global.Query.User
 	userQ := user.WithContext(ctx)
@@ -39,12 +39,12 @@ func RegisterService(userReq req.UserRegisterReq) (resp.ResponseData, error) {
 	err := utils.GetData(key, &userR, fun)
 	// 查到了
 	if err == nil {
-		return resp.ErrorResponseData("用户已存在"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("用户已存在"), errors.New("Business Error")
 	}
 	// 有error
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		global.Logger.Errorf("查询数据失败: %v", err)
-		return resp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 	// 创建用户
 	newUser := model.User{
@@ -54,13 +54,13 @@ func RegisterService(userReq req.UserRegisterReq) (resp.ResponseData, error) {
 	}
 	// 创建对象
 	if err := userQ.Omit(user.OpenID).Create(&newUser); err != nil {
-		return resp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
-	return resp.SuccessResponseDataWithMsg("success"), nil
+	return pkgResp.SuccessResponseDataWithMsg("success"), nil
 }
 
 // LoginService 用户登录
-func LoginService(loginReq req.UserLoginReq) (resp.ResponseData, error) {
+func LoginService(loginReq req.UserLoginReq) (pkgResp.ResponseData, error) {
 	ctx := context.Background()
 	user := query.User
 	userQ := user.WithContext(ctx)
@@ -74,13 +74,13 @@ func LoginService(loginReq req.UserLoginReq) (resp.ResponseData, error) {
 	err := utils.GetData(key, &userR, fun)
 	if err != nil {
 		global.Logger.Errorf("查询数据失败: %v", err)
-		return resp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 	//生成jwt
 	token, err := utils.GenerateToken(userR.ID)
 	if err != nil {
 		global.Logger.Errorf("生成jwt失败 %v", err)
-		return resp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 	// 发送用户登录事件
 	userByte, err := json.Marshal(userR)
@@ -92,15 +92,15 @@ func LoginService(loginReq req.UserLoginReq) (resp.ResponseData, error) {
 		Body:  userByte,
 	}
 	_, _ = global.RocketProducer.SendSync(ctx, msg)
-	return resp.SuccessResponseData(token), nil
+	return pkgResp.SuccessResponseData(token), nil
 }
 
 // GetFriendList 获取好友列表
 //
 //	@Summary	获取好友列表
 //	@Produce	json
-//	@Success	200	{object}	resp.ResponseData	"成功"
-//	@Failure	500	{object}	resp.ResponseData	"内部错误"
+//	@Success	200	{object}	pkgResp.ResponseData	"成功"
+//	@Failure	500	{object}	pkgResp.ResponseData	"内部错误"
 //	@Router		/api/contact/getContactList [get]
 func GetFriendList(c *gin.Context) {
 	ctx := context.Background()
@@ -116,13 +116,13 @@ func GetFriendList(c *gin.Context) {
 		pagesize = 20
 	}
 
-	pageRequest := cursorUtils.PageReq{
+	pageRequest := pkgReq.PageReq{
 		Cursor:   &cursor,
 		PageSize: pagesize,
 	}
 
 	if err := c.ShouldBindQuery(&pageRequest); err != nil {
-		resp.ErrorResponse(c, "参数错误")
+		pkgResp.ErrorResponse(c, "参数错误")
 		return
 	}
 
@@ -130,11 +130,11 @@ func GetFriendList(c *gin.Context) {
 	db := dal.DB
 	userFriend := make([]model.UserFriend, 0)
 	condition := []interface{}{"uid=?", strconv.FormatInt(uid, 10)}
-	pageResp, err := cursorUtils.Paginate(db, pageRequest, &userFriend, "create_time", false, condition...)
+	pageResp, err := utils.Paginate(db, pageRequest, &userFriend, "create_time", false, condition...)
 	if err != nil {
 		// todo 添加日志系统
 		log.Printf("DB excete Sql happen [ERROR], err msg is : %v", err)
-		resp.ErrorResponse(c, "系统繁忙，亲稍后再试")
+		pkgResp.ErrorResponse(c, "系统繁忙，亲稍后再试")
 		return
 	}
 	uids := make([]int64, 0)
@@ -150,13 +150,13 @@ func GetFriendList(c *gin.Context) {
 	if err != nil {
 		// todo 添加日志系统
 		log.Printf("SQL查询错误, 错误信息为 : %v", err)
-		resp.ErrorResponse(c, "出现错误，未能获取联系人信息")
+		pkgResp.ErrorResponse(c, "出现错误，未能获取联系人信息")
 		return
 	}
 
 	// 数据转换
-	friendListVO := make([]resp2.UserContactResp, 0)
+	friendListVO := make([]resp.UserContactResp, 0)
 	_ = copier.Copy(&friendListVO, &friendList)
 	pageResp.Data = friendListVO
-	resp.SuccessResponse(c, pageResp)
+	pkgResp.SuccessResponse(c, pageResp)
 }

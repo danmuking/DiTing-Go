@@ -6,7 +6,7 @@ import (
 	"DiTing-Go/domain/enum"
 	voResp "DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
-	"DiTing-Go/pkg/resp"
+	"DiTing-Go/pkg/domain/vo/resp"
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"

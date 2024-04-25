@@ -2,8 +2,8 @@ package controller
 
 import (
 	"DiTing-Go/domain/vo/req"
-	cursorUtils "DiTing-Go/pkg/cursor"
-	"DiTing-Go/pkg/resp"
+	pkgReq "DiTing-Go/pkg/domain/vo/req"
+	"DiTing-Go/pkg/domain/vo/resp"
 	"DiTing-Go/service"
 	"github.com/gin-gonic/gin"
 )
@@ -94,7 +94,7 @@ func AgreeFriendController(c *gin.Context) {
 //	@Router		/api/user/getApplyList [get]
 func GetUserApplyController(c *gin.Context) {
 	uid := c.GetInt64("uid")
-	pageRequest := cursorUtils.PageReq{}
+	pageRequest := pkgReq.PageReq{}
 	if err := c.ShouldBindQuery(&pageRequest); err != nil { //ShouldBind()会自动推导
 		resp.ErrorResponse(c, "参数错误")
 		return
