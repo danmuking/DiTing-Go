@@ -67,14 +67,14 @@ func LoginService(loginReq req.UserLoginReq) (pkgResp.ResponseData, error) {
 	// 查数据库
 	// 检查密码是否正确
 	fun := func() (interface{}, error) {
-		return userQ.Where(user.Name.Eq(loginReq.Name), user.Password.Eq(loginReq.Password)).First()
+		return userQ.Where(user.Name.Eq(loginReq.UserName), user.Password.Eq(loginReq.Password)).First()
 	}
 	userR := model.User{}
-	key := fmt.Sprintf(domainEnum.UserCacheByName, loginReq.Name)
+	key := fmt.Sprintf(domainEnum.UserCacheByName, loginReq.UserName)
 	err := utils.GetData(key, &userR, fun)
 	if err != nil {
 		global.Logger.Errorf("查询数据失败: %v", err)
-		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("用户名或密码错误"), errors.New("Business Error")
 	}
 	//生成jwt
 	token, err := utils.GenerateToken(userR.ID)
