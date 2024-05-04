@@ -8,15 +8,15 @@ type ContactDto struct {
 	// 会话ID
 	ID int64 `json:"id"`
 	// 房间ID
-	RoomID int64 `json:"room_id"`
+	RoomID int64 `json:"roomId"`
 	// 头像
 	Avatar string `json:"avatar"`
 	// 会话名称
 	Name string `json:"name"`
 	// 最后一条消息内容
-	LastMsg string `json:"last_msg"`
+	LastMsg string `json:"lastMsg"`
 	// 最后一条消息时间
-	LastTime time.Time `json:"last_time"`
+	LastTime time.Time `json:"lastTime"`
 	// 未读消息数
-	UnreadCount int32 `json:"unread_count"`
+	UnreadCount int32 `json:"unreadCount"`
 }
