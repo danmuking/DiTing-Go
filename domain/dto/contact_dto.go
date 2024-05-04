@@ -1,9 +1,5 @@
 package dto
 
-import (
-	"time"
-)
-
 type ContactDto struct {
 	// 会话ID
 	ID int64 `json:"id"`
@@ -15,8 +11,8 @@ type ContactDto struct {
 	Name string `json:"name"`
 	// 最后一条消息内容
 	LastMsg string `json:"lastMsg"`
-	// 最后一条消息时间
-	LastTime time.Time `json:"lastTime"`
+	// 最后一条消息时间 时间戳格式
+	LastTime int64 `json:"lastTime"`
 	// 未读消息数
 	UnreadCount int32 `json:"unreadCount"`
 }
