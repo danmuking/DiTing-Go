@@ -56,7 +56,7 @@ func RegisterService(userReq req.UserRegisterReq) (pkgResp.ResponseData, error) 
 	if err := userQ.Omit(user.OpenID).Create(&newUser); err != nil {
 		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
-	return pkgResp.SuccessResponseDataWithMsg("success"), nil
+	return pkgResp.SuccessResponseDataWithMsg("注册成功"), nil
 }
 
 // LoginService 用户登录
@@ -92,7 +92,13 @@ func LoginService(loginReq req.UserLoginReq) (pkgResp.ResponseData, error) {
 		Body:  userByte,
 	}
 	_, _ = global.RocketProducer.SendSync(ctx, msg)
-	return pkgResp.SuccessResponseData(token), nil
+	userResp := resp.UserLoginResp{
+		Token:  token,
+		Uid:    userR.ID,
+		Name:   userR.Name,
+		Avatar: userR.Avatar,
+	}
+	return pkgResp.SuccessResponseData(userResp), nil
 }
 
 // GetFriendList 获取好友列表
