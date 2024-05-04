@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 	"reflect"
 	"regexp"
+	"time"
 )
 
 // Paginate 是通用的游标分页函数
@@ -52,7 +53,15 @@ func Paginate(db *gorm.DB, params pkgReq.PageReq, result interface{}, cursorFiel
 			return nil, err
 		}
 		cursorValue := lastItem.FieldByName(fieldsMap[cursorFieldName])
-		cursorStr := fmt.Sprint(cursorValue.Interface())
+		//获取cursorValue的类型
+		cursorType := cursorValue.Type()
+		// 如果是Time.time类型，转换为时间戳
+		cursorStr := ""
+		if cursorType.String() == "time.Time" {
+			cursorStr = fmt.Sprint(cursorValue.Interface().(time.Time).UnixNano())
+		} else {
+			cursorStr = fmt.Sprint(cursorValue.Interface())
+		}
 		resp.Cursor = &cursorStr
 	}
 
