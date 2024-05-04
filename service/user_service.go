@@ -32,14 +32,14 @@ func RegisterService(userReq req.UserRegisterReq) (pkgResp.ResponseData, error) 
 	user := global.Query.User
 	userQ := user.WithContext(ctx)
 	fun := func() (interface{}, error) {
-		return userQ.Where(user.Name.Eq(userReq.Name)).First()
+		return userQ.Where(user.Name.Eq(userReq.Username)).First()
 	}
 	userR := model.User{}
-	key := fmt.Sprintf(domainEnum.UserCacheByName, userReq.Name)
+	key := fmt.Sprintf(domainEnum.UserCacheByName, userReq.Username)
 	err := utils.GetData(key, &userR, fun)
 	// 查到了
 	if err == nil {
-		return pkgResp.ErrorResponseData("用户已存在"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("用户名已存在"), errors.New("Business Error")
 	}
 	// 有error
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -48,7 +48,7 @@ func RegisterService(userReq req.UserRegisterReq) (pkgResp.ResponseData, error) 
 	}
 	// 创建用户
 	newUser := model.User{
-		Name:     userReq.Name,
+		Name:     userReq.Username,
 		Password: userReq.Password,
 		IPInfo:   "{}",
 	}
