@@ -46,6 +46,7 @@ func GetContactListService(c *gin.Context) {
 	return
 }
 
+// TODO: 优化
 func GetContactList(uid int64, pageRequest pkgReq.PageReq) (*pkgResp.PageResp, error) {
 	db := dal.DB
 	contact := make([]model.Contact, 0)
