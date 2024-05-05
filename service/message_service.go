@@ -3,57 +3,68 @@ package service
 import (
 	"DiTing-Go/dal/model"
 	"DiTing-Go/domain/enum"
+	"DiTing-Go/domain/vo/req"
+	domainResp "DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
+	pkgEnum "DiTing-Go/pkg/domain/enum"
 	"DiTing-Go/pkg/domain/vo/resp"
-	"bytes"
 	"context"
-	"github.com/gin-gonic/gin"
-	"github.com/goccy/go-json"
-	"io"
 	"log"
+	"time"
 )
 
 // SendTextMsgService 发送文本消息
-func SendTextMsgService(c *gin.Context) {
-	// TODO：封装dto 状态不需要前端传递参数
-	uid := c.GetInt64("uid")
+func SendTextMsgService(uid int64, msgReq req.MessageReq) (resp.ResponseData, error) {
+	ctx := context.Background()
+	user := global.Query.User
+	userQ := user.WithContext(ctx)
+	userR, err := userQ.Where(user.ID.Eq(uid)).First()
+	if err != nil {
+		log.Println("查询用户失败", err)
+		return resp.ErrorResponseData("消息发送失败"), err
+	}
+
 	msg := model.Message{}
-	data, err := c.GetRawData()
-	if err != nil { //ShouldBind()会自动推导
-		resp.ErrorResponse(c, "参数错误")
-		c.Abort()
-		return
-	}
-	c.Request.Body = io.NopCloser(bytes.NewBuffer(data))
-	if err := json.Unmarshal(data, &msg); err != nil {
-		resp.ErrorResponse(c, "参数错误")
-		c.Abort()
-		log.Println("参数错误", err.Error())
-		return
-	}
-	msg.Type = enum.TextMessageType
+	msg.Type = msgReq.MsgType
 	msg.FromUID = uid
+	msg.RoomID = msgReq.RoomId
+	msg.Content = msgReq.Body.Content
 	if msg.Extra == "" {
 		msg.Extra = "{}"
 	}
 
 	// 发送消息
 	if err := SendTextMsg(&msg); err != nil {
-		resp.ErrorResponse(c, "消息发送失败")
-		c.Abort()
-		return
+		return resp.ErrorResponseData("消息发送失败"), err
 	}
-
 	// 发送新消息事件
 	global.Bus.Publish(enum.NewMessageEvent, msg)
 
+	msgResp := domainResp.MessageResp{
+		FromUser: domainResp.MsgUser{
+			Uid:      uid,
+			Username: userR.Name,
+			Avatar:   userR.Avatar,
+		},
+		SendTime: msg.CreateTime.UnixMilli(),
+		Message: domainResp.Msg{
+			ID:     msg.ID,
+			RoomId: msg.RoomID,
+			Type:   msg.Type,
+			Body: domainResp.TextBody{
+				Content: msg.Content,
+				Reply:   msg.ReplyMsgID,
+			},
+		},
+	}
+
 	// 返回成功
-	resp.SuccessResponseWithMsg(c, "success")
-	c.Abort()
-	return
+	return resp.SuccessResponseData(msgResp), nil
 }
 
 func SendTextMsg(msg *model.Message) error {
+	msg.CreateTime = time.Now()
+	msg.DeleteStatus = pkgEnum.NORMAL
 	ctx := context.Background()
 	msgQ := global.Query.WithContext(ctx).Message
 	if err := msgQ.Create(msg); err != nil {

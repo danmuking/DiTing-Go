@@ -83,10 +83,10 @@ func initGin() {
 		apiContact.POST("userInfo/batch", controller.GetUserInfoBatchController)
 	}
 
-	apiMsg := router.Group("/api/msg")
+	apiMsg := router.Group("/api/chat")
 	apiMsg.Use(middleware.JWT())
 	{
-		apiMsg.POST("textMsg", service.SendTextMsgService)
+		apiMsg.POST("msg", controller.SendMessageController)
 	}
 
 	apiFile := router.Group("/api/file")

@@ -7,7 +7,7 @@ type MsgUser struct {
 }
 type Msg struct {
 	ID     int64    `json:"id"`
-	RoomId int64    `json:"rooId"`
+	RoomId int64    `json:"roomId"`
 	Type   int32    `json:"type"`
 	Body   TextBody `json:"body"`
 }
