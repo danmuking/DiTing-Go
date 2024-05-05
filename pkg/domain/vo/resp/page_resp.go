@@ -2,6 +2,6 @@ package resp
 
 type PageResp struct {
 	Cursor *string `json:"cursor" form:"cursor"`
-	IsLast bool    `json:"is_last" form:"is_last"`
+	IsLast bool    `json:"isLast" form:"is_last"`
 	Data   any     `json:"data" form:"data"`
 }

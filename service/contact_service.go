@@ -6,8 +6,10 @@ import (
 	"DiTing-Go/domain/dto"
 	"DiTing-Go/domain/enum"
 	domainModel "DiTing-Go/domain/model"
+	"DiTing-Go/domain/vo/req"
 	domainResp "DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
+	pkgEnum "DiTing-Go/pkg/domain/enum"
 	pkgReq "DiTing-Go/pkg/domain/vo/req"
 	"DiTing-Go/pkg/domain/vo/resp"
 	pkgResp "DiTing-Go/pkg/domain/vo/resp"
@@ -160,26 +162,28 @@ func getContactDto(contact model.Contact) (*dto.ContactDto, error) {
 
 func GetContactDetailService(c *gin.Context) {
 	uid := c.GetInt64("uid")
-	roomIdString, _ := c.GetQuery("room_id")
-	roomId, _ := strconv.ParseInt(roomIdString, 10, 64)
-	//TODO:参数校验
-	// 游标翻页
-	// 默认值
-	var cursor *string = nil
-	var pageSize int = 20
-	pageRequest := pkgReq.PageReq{
-		Cursor:   cursor,
-		PageSize: pageSize,
-	}
-	if err := c.ShouldBindQuery(&pageRequest); err != nil { //ShouldBind()会自动推导
+	getMessageListReq := req.GetMessageListReq{}
+	if err := c.ShouldBindQuery(&getMessageListReq); err != nil { //ShouldBind()会自动推导
 		resp.ErrorResponse(c, "参数错误")
 		c.Abort()
 		return
 	}
+	roomId := getMessageListReq.RoomId
+	cursor, err := timestampToTime(getMessageListReq.Cursor)
+	if err != nil {
+		global.Logger.Errorf("时间戳转换失败 %s", err)
+		resp.ErrorResponse(c, "系统正忙，请稍后再试")
+		c.Abort()
+		return
+	}
+	pageRequest := pkgReq.PageReq{
+		Cursor:   cursor,
+		PageSize: getMessageListReq.PageSize,
+	}
 	// 更新会话表
 	contact := global.Query.Contact
 	contactQ := contact.WithContext(context.Background())
-	_, err := contactQ.Where(contact.UID.Eq(uid), contact.RoomID.Eq(roomId)).Update(contact.ReadTime, time.Now())
+	_, err = contactQ.Where(contact.UID.Eq(uid), contact.RoomID.Eq(roomId)).Update(contact.ReadTime, time.Now())
 	if err != nil {
 		global.Logger.Errorf("更新会话失败 %s", err)
 		resp.ErrorResponse(c, "系统正忙，请稍后再试")
@@ -204,7 +208,7 @@ func GetContactDetail(roomID int64, pageRequest pkgReq.PageReq) (*pkgResp.PageRe
 	db := dal.DB
 	msgs := make([]model.Message, 0)
 	// TODO: 抽象成常量
-	condition := []interface{}{"room_id=? AND status=?", strconv.FormatInt(roomID, 10), "0"}
+	condition := []interface{}{"room_id=? AND delete_status=?", strconv.FormatInt(roomID, 10), pkgEnum.NORMAL}
 	pageResp, err := utils.Paginate(db, pageRequest, &msgs, "create_time", false, condition...)
 	if err != nil {
 		global.Logger.Errorf("查询消息失败: %s", err.Error())
@@ -254,4 +258,18 @@ func GetContactDetail(roomID int64, pageRequest pkgReq.PageReq) (*pkgResp.PageRe
 	}
 	pageResp.Data = msgRespList
 	return pageResp, nil
+}
+func timestampToTime(timestampStr *string) (*string, error) {
+	if timestampStr != nil && *timestampStr != "" {
+		// 时间戳转时间
+		timestamp, err := strconv.ParseInt(*timestampStr, 10, 64)
+		if err != nil {
+			global.Logger.Errorf("时间戳转换失败 %s", err)
+			return nil, err
+		}
+		cursor := time.Unix(0, timestamp)
+		cursorStr := cursor.Format(time.RFC3339Nano)
+		return &cursorStr, nil
+	}
+	return nil, nil
 }
