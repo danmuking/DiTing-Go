@@ -7,6 +7,7 @@ import (
 	"DiTing-Go/domain/enum"
 	domainModel "DiTing-Go/domain/model"
 	"DiTing-Go/domain/vo/req"
+	domainResp "DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
 	pkgEnum "DiTing-Go/pkg/domain/enum"
 	pkgReq "DiTing-Go/pkg/domain/vo/req"
@@ -16,6 +17,7 @@ import (
 	"DiTing-Go/service/adapter"
 	"context"
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
 	"strconv"
 	"time"
 )
@@ -257,4 +259,40 @@ func timestampToTime(timestampStr *string) (*string, error) {
 		return &cursorStr, nil
 	}
 	return nil, nil
+}
+
+func GetUserInfoBatchService(reqList req.GetUserInfoBatchReq) (pkgResp.ResponseData, error) {
+	ctx := context.Background()
+	user := global.Query.User
+	userQ := user.WithContext(ctx)
+	uids := make([]int64, 0)
+
+	userMap := make(map[int64]*req.UserInfoBatchReqItem)
+	for _, item := range reqList.List {
+		uids = append(uids, item.Uid)
+		userMap[item.Uid] = &item
+	}
+	users, err := userQ.Where(user.ID.In(uids...)).Find()
+	if err != nil {
+		global.Logger.Errorf("查询用户失败 %s", err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
+	resultList := make([]domainResp.GetUserInfoBatchResp, 0)
+	for _, user := range users {
+		resultItem := domainResp.GetUserInfoBatchResp{
+			Uid: user.ID,
+		}
+		if user.UpdateTime.UnixMilli() > userMap[user.ID].LastModifyTime {
+			resultItem.Username = user.Name
+			resultItem.Avatar = user.Avatar
+			resultItem.NeedRefresh = true
+		} else {
+			resultItem.NeedRefresh = false
+		}
+		resultList = append(resultList, resultItem)
+	}
+
+	return pkgResp.SuccessResponseData(resultList), nil
+
 }

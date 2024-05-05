@@ -80,6 +80,7 @@ func initGin() {
 	{
 		apiContact.GET("getContactList", service.GetContactListService)
 		apiContact.GET("getMessageList", service.GetContactDetailService)
+		apiContact.POST("userInfo/batch", controller.GetUserInfoBatchController)
 	}
 
 	apiMsg := router.Group("/api/msg")
