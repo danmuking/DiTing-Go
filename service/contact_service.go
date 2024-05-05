@@ -7,13 +7,13 @@ import (
 	"DiTing-Go/domain/enum"
 	domainModel "DiTing-Go/domain/model"
 	"DiTing-Go/domain/vo/req"
-	domainResp "DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
 	pkgEnum "DiTing-Go/pkg/domain/enum"
 	pkgReq "DiTing-Go/pkg/domain/vo/req"
 	"DiTing-Go/pkg/domain/vo/resp"
 	pkgResp "DiTing-Go/pkg/domain/vo/resp"
 	"DiTing-Go/pkg/utils"
+	"DiTing-Go/service/adapter"
 	"context"
 	"github.com/gin-gonic/gin"
 	"strconv"
@@ -241,22 +241,7 @@ func GetContactDetail(roomID int64, pageRequest pkgReq.PageReq) (*pkgResp.PageRe
 	}
 
 	// 拼装结果
-	msgRespList := make([]domainResp.MessageResp, 0)
-	for _, msg := range *msgList {
-		msgResp := domainResp.MessageResp{
-			ID:         msg.ID,
-			Content:    msg.Content,
-			ReplyMsgID: msg.ReplyMsgID,
-			GapCount:   msg.GapCount,
-			Type:       msg.Type,
-			Extra:      msg.Extra,
-			CreateTime: msg.CreateTime,
-			UserName:   userMap[msg.FromUID].Name,
-			UserAvatar: userMap[msg.FromUID].Avatar,
-		}
-		msgRespList = append(msgRespList, msgResp)
-	}
-	pageResp.Data = msgRespList
+	pageResp = adapter.BuildMessageRespByMsgAndUser(pageResp, msgList, userMap)
 	return pageResp, nil
 }
 func timestampToTime(timestampStr *string) (*string, error) {
