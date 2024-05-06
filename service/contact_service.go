@@ -17,8 +17,10 @@ import (
 	"DiTing-Go/service/adapter"
 	"context"
 	"github.com/gin-gonic/gin"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -121,19 +123,29 @@ func GetContactListService(uid int64, pageReq pkgReq.PageReq) (pkgResp.ResponseD
 	}
 
 	// 查询未读消息数
-	//TODO:优化
-	counts := make([]int, 0)
+	//fixme: 有没有更好的方法
+	countMap := cmap.New[int64]()
+	var wg sync.WaitGroup
+	err = nil
 	for _, contact := range *contactList {
-		count, err := msgQ.Where(msg.RoomID.Eq(contact.RoomID), msg.DeleteStatus.Eq(enum.NORMAL), msg.CreateTime.Gt(contact.ReadTime)).Limit(99).Count()
-		if err != nil {
-			global.Logger.Errorf("统计未读数失败 %s", err)
-			return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
-		}
-		counts = append(counts, int(count))
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var count int64
+			count, err = msgQ.Where(msg.RoomID.Eq(contact.RoomID), msg.DeleteStatus.Eq(enum.NORMAL), msg.CreateTime.Gt(contact.ReadTime)).Limit(99).Count()
+			if err != nil {
+				global.Logger.Errorf("统计未读数失败 %s", err)
+			}
+			countMap.Set(strconv.FormatInt(contact.RoomID, 10), count)
+		}()
+	}
+	wg.Wait()
+	if err != nil {
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 
 	// 拼装结果
-	contactDaoList := adapter.BuildContactDaoList(*contactList, userRList, msgRList, roomRList, roomFriendRList, roomGroupRList, counts)
+	contactDaoList := adapter.BuildContactDaoList(*contactList, userRList, msgRList, roomRList, roomFriendRList, roomGroupRList, countMap)
 
 	pageResp.Data = contactDaoList
 	return pkgResp.SuccessResponseData(pageResp), nil
@@ -261,7 +273,6 @@ func GetContactDetail(roomID int64, pageRequest pkgReq.PageReq) (*pkgResp.PageRe
 	// 查询消息
 	db := dal.DB
 	msgs := make([]model.Message, 0)
-	// TODO: 抽象成常量
 	condition := []interface{}{"room_id=? AND delete_status=?", strconv.FormatInt(roomID, 10), pkgEnum.NORMAL}
 	pageResp, err := utils.Paginate(db, pageRequest, &msgs, "create_time", false, condition...)
 	if err != nil {

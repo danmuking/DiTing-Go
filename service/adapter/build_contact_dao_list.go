@@ -4,6 +4,8 @@ import (
 	"DiTing-Go/dal/model"
 	"DiTing-Go/domain/dto"
 	"DiTing-Go/domain/enum"
+	cmap "github.com/orcaman/concurrent-map/v2"
+	"strconv"
 )
 
 type RoomDto struct {
@@ -13,7 +15,7 @@ type RoomDto struct {
 	Type   int
 }
 
-func BuildContactDaoList(contactList []model.Contact, userList []*model.User, messageList []*model.Message, roomList []*model.Room, roomFriendList []*model.RoomFriend, roomGroupList []*model.RoomGroup, counts []int) []dto.ContactDto {
+func BuildContactDaoList(contactList []model.Contact, userList []*model.User, messageList []*model.Message, roomList []*model.Room, roomFriendList []*model.RoomFriend, roomGroupList []*model.RoomGroup, countMap cmap.ConcurrentMap[string, int64]) []dto.ContactDto {
 	contactDtoList := make([]dto.ContactDto, 0)
 
 	userMap := make(map[int64]*model.User)
@@ -52,7 +54,7 @@ func BuildContactDaoList(contactList []model.Contact, userList []*model.User, me
 		}
 		roomMap[room.ID] = roomDto
 	}
-	for i, contact := range contactList {
+	for _, contact := range contactList {
 		contactDto := dto.ContactDto{}
 		contactDto.ID = contact.ID
 		contactDto.RoomID = contact.RoomID
@@ -61,7 +63,8 @@ func BuildContactDaoList(contactList []model.Contact, userList []*model.User, me
 		contactDto.LastMsg = msgMap[contact.LastMsgID].Content
 		contactDto.LastTime = contact.ActiveTime.UnixMilli()
 		//TODO：统计未读消息数
-		contactDto.UnreadCount = int32(counts[i])
+		unreadCount, _ := countMap.Get(strconv.FormatInt(contact.RoomID, 10))
+		contactDto.UnreadCount = int32(unreadCount)
 		contactDto.Type = roomMap[contact.RoomID].Type
 		contactDtoList = append(contactDtoList, contactDto)
 	}
