@@ -132,7 +132,7 @@ func GetContactListService(uid int64, pageReq pkgReq.PageReq) (pkgResp.ResponseD
 		go func() {
 			defer wg.Done()
 			var count int64
-			count, err = msgQ.Where(msg.RoomID.Eq(contact.RoomID), msg.DeleteStatus.Eq(enum.NORMAL), msg.CreateTime.Gt(contact.ReadTime)).Limit(99).Count()
+			count, err = msgQ.Where(msg.RoomID.Eq(contact.RoomID), msg.DeleteStatus.Eq(pkgEnum.NORMAL), msg.CreateTime.Gt(contact.ReadTime)).Limit(99).Count()
 			if err != nil {
 				global.Logger.Errorf("统计未读数失败 %s", err)
 			}
