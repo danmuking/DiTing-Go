@@ -120,8 +120,20 @@ func GetContactListService(uid int64, pageReq pkgReq.PageReq) (pkgResp.ResponseD
 		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 
+	// 查询未读消息数
+	//TODO:优化
+	counts := make([]int, 0)
+	for _, contact := range *contactList {
+		count, err := msgQ.Where(msg.RoomID.Eq(contact.RoomID), msg.DeleteStatus.Eq(enum.NORMAL), msg.CreateTime.Gt(contact.ReadTime)).Limit(99).Count()
+		if err != nil {
+			global.Logger.Errorf("统计未读数失败 %s", err)
+			return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+		}
+		counts = append(counts, int(count))
+	}
+
 	// 拼装结果
-	contactDaoList := adapter.BuildContactDaoList(*contactList, userRList, msgRList, roomRList, roomFriendRList, roomGroupRList)
+	contactDaoList := adapter.BuildContactDaoList(*contactList, userRList, msgRList, roomRList, roomFriendRList, roomGroupRList, counts)
 
 	pageResp.Data = contactDaoList
 	return pkgResp.SuccessResponseData(pageResp), nil

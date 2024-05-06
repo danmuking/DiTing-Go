@@ -13,7 +13,7 @@ type RoomDto struct {
 	Type   int
 }
 
-func BuildContactDaoList(contactList []model.Contact, userList []*model.User, messageList []*model.Message, roomList []*model.Room, roomFriendList []*model.RoomFriend, roomGroupList []*model.RoomGroup) []dto.ContactDto {
+func BuildContactDaoList(contactList []model.Contact, userList []*model.User, messageList []*model.Message, roomList []*model.Room, roomFriendList []*model.RoomFriend, roomGroupList []*model.RoomGroup, counts []int) []dto.ContactDto {
 	contactDtoList := make([]dto.ContactDto, 0)
 
 	userMap := make(map[int64]*model.User)
@@ -52,7 +52,7 @@ func BuildContactDaoList(contactList []model.Contact, userList []*model.User, me
 		}
 		roomMap[room.ID] = roomDto
 	}
-	for _, contact := range contactList {
+	for i, contact := range contactList {
 		contactDto := dto.ContactDto{}
 		contactDto.ID = contact.ID
 		contactDto.RoomID = contact.RoomID
@@ -61,7 +61,7 @@ func BuildContactDaoList(contactList []model.Contact, userList []*model.User, me
 		contactDto.LastMsg = msgMap[contact.LastMsgID].Content
 		contactDto.LastTime = contact.ActiveTime.UnixMilli()
 		//TODO：统计未读消息数
-		contactDto.UnreadCount = 0
+		contactDto.UnreadCount = int32(counts[i])
 		contactDto.Type = roomMap[contact.RoomID].Type
 		contactDtoList = append(contactDtoList, contactDto)
 	}
