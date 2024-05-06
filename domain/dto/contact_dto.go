@@ -15,4 +15,6 @@ type ContactDto struct {
 	LastTime int64 `json:"lastTime"`
 	// 未读消息数
 	UnreadCount int32 `json:"unreadCount"`
+	// 会话类型
+	Type int `json:"type"`
 }

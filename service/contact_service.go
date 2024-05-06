@@ -22,68 +22,109 @@ import (
 	"time"
 )
 
-func GetContactListService(c *gin.Context) {
-	uid := c.GetInt64("uid")
-	// 游标翻页
-	// 默认值
-	var cursor *string = nil
-	var pageSize int = 20
-	pageRequest := pkgReq.PageReq{
-		Cursor:   cursor,
-		PageSize: pageSize,
-	}
-	if err := c.ShouldBindQuery(&pageRequest); err != nil { //ShouldBind()会自动推导
-		global.Logger.Errorf("参数错误 %s", err)
-		resp.ErrorResponse(c, "参数错误")
-		c.Abort()
-		return
-	}
-	pageResp, err := GetContactList(uid, pageRequest)
-	if err != nil {
-		global.Logger.Errorf("查询会话列表失败 %s", err)
-		resp.ErrorResponse(c, "查询会话列表失败")
-		c.Abort()
-		return
-	}
-	resp.SuccessResponse(c, pageResp)
-	c.Abort()
-	return
-}
-
-// TODO: 优化
-func GetContactList(uid int64, pageRequest pkgReq.PageReq) (*pkgResp.PageResp, error) {
+func GetContactListService(uid int64, pageReq pkgReq.PageReq) (pkgResp.ResponseData, error) {
 	db := dal.DB
 	contact := make([]model.Contact, 0)
 	condition := []interface{}{"uid=?", strconv.FormatInt(uid, 10)}
-	if pageRequest.Cursor != nil && *pageRequest.Cursor != "" {
+	if pageReq.Cursor != nil && *pageReq.Cursor != "" {
 		// 时间戳转时间
-		timestamp, err := strconv.ParseInt(*pageRequest.Cursor, 10, 64)
+		timestamp, err := strconv.ParseInt(*pageReq.Cursor, 10, 64)
 		if err != nil {
 			global.Logger.Errorf("时间戳转换失败 %s", err)
-			return nil, err
+			return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 		}
 		cursor := time.Unix(0, timestamp)
 		cursorStr := cursor.Format(time.RFC3339Nano)
-		pageRequest.Cursor = &cursorStr
+		pageReq.Cursor = &cursorStr
 	}
 
-	pageResp, err := utils.Paginate(db, pageRequest, &contact, "active_time", false, condition...)
+	pageResp, err := utils.Paginate(db, pageReq, &contact, "active_time", false, condition...)
 	if err != nil {
 		global.Logger.Errorf("查询会话列表失败 %s", err)
-		return nil, err
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 	contactList := pageResp.Data.(*[]model.Contact)
-	contactDtoList := make([]dto.ContactDto, 0)
+
+	// 收集会话id
+	contactRoomIdList := make([]int64, 0)
 	for _, contact := range *contactList {
-		contactDto, err := getContactDto(contact)
-		if err != nil {
-			global.Logger.Errorf("查询会话列表失败 %s", err)
-			return nil, err
-		}
-		contactDtoList = append(contactDtoList, *contactDto)
+		contactRoomIdList = append(contactRoomIdList, contact.RoomID)
 	}
-	pageResp.Data = contactDtoList
-	return pageResp, nil
+
+	// 查询出对应的房间信息
+	ctx := context.Background()
+	room := global.Query.Room
+	roomQ := room.WithContext(ctx)
+	// 查询房间类型
+	roomRList, err := roomQ.Where(room.ID.In(contactRoomIdList...)).Find()
+	if err != nil {
+		global.Logger.Errorf("查询房间失败 %s", err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+	// 收集单聊房间的id
+	roomFriendIdList := make([]int64, 0)
+	// 收集群聊房间的id
+	roomGroupIdList := make([]int64, 0)
+	for _, room := range roomRList {
+		if room.Type == enum.PERSONAL {
+			roomFriendIdList = append(roomFriendIdList, room.ID)
+		} else if room.Type == enum.GROUP {
+			roomGroupIdList = append(roomGroupIdList, room.ID)
+		}
+	}
+
+	// 查询好友房间信息
+	roomFriend := global.Query.RoomFriend
+	roomFriendQ := roomFriend.WithContext(ctx)
+	roomFriendRList, err := roomFriendQ.Where(roomFriend.RoomID.In(roomFriendIdList...)).Find()
+	if err != nil {
+		global.Logger.Errorf("查询好友房间失败 %s", err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+	// 查询用户信息
+	uidList := make([]int64, 0)
+	for _, roomFriend := range roomFriendRList {
+		if roomFriend.Uid1 == uid {
+			uidList = append(uidList, roomFriend.Uid2)
+		} else {
+			uidList = append(uidList, roomFriend.Uid1)
+		}
+	}
+	user := global.Query.User
+	userQ := user.WithContext(ctx)
+	userRList, err := userQ.Where(user.ID.In(uidList...)).Find()
+	if err != nil {
+		global.Logger.Errorf("查询用户失败 %s", err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
+	// 查询群聊房间信息
+	roomGroup := global.Query.RoomGroup
+	roomGroupQ := roomGroup.WithContext(ctx)
+	roomGroupRList, err := roomGroupQ.Where(roomGroup.RoomID.In(roomGroupIdList...)).Find()
+	if err != nil {
+		global.Logger.Errorf("查询群聊房间失败 %s", err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
+	// 查询最后一条消息
+	lastMsgIdList := make([]int64, 0)
+	for _, contact := range *contactList {
+		lastMsgIdList = append(lastMsgIdList, contact.LastMsgID)
+	}
+	msg := global.Query.Message
+	msgQ := msg.WithContext(ctx)
+	msgRList, err := msgQ.Where(msg.ID.In(lastMsgIdList...)).Find()
+	if err != nil {
+		global.Logger.Errorf("查询最后一条消息失败 %s", err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
+	// 拼装结果
+	contactDaoList := adapter.BuildContactDaoList(*contactList, userRList, msgRList, roomRList, roomFriendRList, roomGroupRList)
+
+	pageResp.Data = contactDaoList
+	return pkgResp.SuccessResponseData(pageResp), nil
 }
 
 // 获取会话dto
@@ -145,7 +186,6 @@ func getContactDto(contact model.Contact) (*dto.ContactDto, error) {
 		contactDto.Name = roomGroupR.Name
 		contactDto.Avatar = roomGroupR.Avatar
 		contactDto.LastTime = contact.ActiveTime.UnixNano()
-
 		// TODO:热点群聊
 
 	}

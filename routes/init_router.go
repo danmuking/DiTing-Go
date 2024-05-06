@@ -78,7 +78,7 @@ func initGin() {
 	apiContact := router.Group("/api/contact")
 	apiContact.Use(middleware.JWT())
 	{
-		apiContact.GET("getContactList", service.GetContactListService)
+		apiContact.GET("getContactList", controller.GetContactListController)
 		apiContact.GET("getMessageList", service.GetContactDetailService)
 		apiContact.POST("userInfo/batch", controller.GetUserInfoBatchController)
 	}
