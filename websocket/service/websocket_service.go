@@ -2,6 +2,7 @@ package service
 
 import (
 	"DiTing-Go/domain/enum"
+	global2 "DiTing-Go/global"
 	"DiTing-Go/pkg/utils"
 	"DiTing-Go/websocket/global"
 	"fmt"
@@ -36,11 +37,15 @@ var upgrader = &websocket.Upgrader{
 // Connect 建立WebSocket连接
 func Connect(w http.ResponseWriter, r *http.Request) {
 	//先获得Http的token中的uid
-	uid, err := parseJwt(r)
+	//url中的获取token参数
+	params := r.URL.Query()
+	token := params.Get("token")
+	tokenInfo, err := utils.ParseToken(token)
 	if err != nil {
-		log.Print("Error during connection upgradation:", err)
+		global2.Logger.Errorf("无权限访问: %v", err)
 		return
 	}
+	uid := &tokenInfo.Uid
 	// Upgrade our raw HTTP connection to a websocket based one
 	conn, err := upgrader.Upgrade(w, r, nil)
 	// 关闭连接

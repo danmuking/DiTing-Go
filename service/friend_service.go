@@ -16,12 +16,12 @@ import (
 	"DiTing-Go/utils/redisCache"
 	"context"
 	"fmt"
-	"github.com/jinzhu/copier"
 	"github.com/pkg/errors"
 	"gorm.io/gen"
 	"gorm.io/gorm"
 	"sort"
 	"strconv"
+	"time"
 )
 
 // ApplyFriendService 添加好友
@@ -396,11 +396,24 @@ func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (resp.R
 
 // GetUserApplyService 获取好友申请列表
 func GetUserApplyService(uid int64, pageReq pkgReq.PageReq) (resp.ResponseData, error) {
+	if pageReq.Cursor != nil && *pageReq.Cursor != "" {
+		// 时间戳转时间
+		timestamp, err := strconv.ParseInt(*pageReq.Cursor, 10, 64)
+		if err != nil {
+			global.Logger.Errorf("时间戳转换失败 %s", err)
+			return resp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+		}
+		cursor := time.Unix(0, timestamp)
+		cursorStr := cursor.Format(time.RFC3339Nano)
+		pageReq.Cursor = &cursorStr
+	}
+
 	ctx := context.Background()
 	// 获取 UserApply 表中 TargetID 等于 uid(登录用户ID)的用户ID集合，采用游标分页
 	db := dal.DB
 	userApplys := make([]model.UserApply, 0)
 	condition := []interface{}{"target_id=?", strconv.FormatInt(uid, 10)}
+
 	pageResp, err := utils.Paginate(db, pageReq, &userApplys, "create_time", false, condition...)
 	if err != nil {
 		global.Logger.Errorf("查询好友申请表失败 %s", err)
@@ -429,7 +442,8 @@ func GetUserApplyService(uid int64, pageReq pkgReq.PageReq) (resp.ResponseData, 
 	// 数据转换
 	for i := 0; i < len(users); i++ {
 		var userVO domainResp.UserApplyResp
-		_ = copier.Copy(&userVO, &users[i])
+		userVO.ApplyId = userApplys[i].ID
+		userVO.Uid = userApplys[i].UID
 		userVO.Msg = userApplys[i].Msg
 		userVO.Status = userApplys[i].Status
 		usersVO = append(usersVO, userVO)
@@ -462,4 +476,57 @@ func UnreadApplyNumService(uid int64) (resp.ResponseData, error) {
 		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 	}
 	return resp.SuccessResponseData(num), nil
+}
+
+// GetFriendListService 获取好友列表
+func GetFriendListService(uid int64, pageReq pkgReq.PageReq) (resp.ResponseData, error) {
+	if pageReq.Cursor != nil && *pageReq.Cursor != "" {
+		// 时间戳转时间
+		timestamp, err := strconv.ParseInt(*pageReq.Cursor, 10, 64)
+		if err != nil {
+			global.Logger.Errorf("时间戳转换失败 %s", err)
+			return resp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+		}
+		cursor := time.Unix(0, timestamp)
+		cursorStr := cursor.Format(time.RFC3339Nano)
+		pageReq.Cursor = &cursorStr
+	}
+
+	ctx := context.Background()
+	// 获取 UserFriend 表中 uid = uid 的好友的uid组成的集合
+	db := dal.DB
+	userFriend := make([]model.UserFriend, 0)
+	condition := []interface{}{"uid=?", strconv.FormatInt(uid, 10)}
+	pageResp, err := utils.Paginate(db, pageReq, &userFriend, "create_time", false, condition...)
+	if err != nil {
+		global.Logger.Errorf("分页查询失败 %v", err)
+		return resp.ErrorResponseData("系统繁忙，请稍后再试"), errors.New("Business Error")
+	}
+	uids := make([]int64, 0)
+
+	for _, friend := range userFriend {
+		uids = append(uids, friend.FriendUID)
+	}
+
+	// 获取好友信息
+	users := global.Query.User
+	// select id , name , avatar from user where id in (...) and status = 0
+	friendList, err := users.WithContext(ctx).Select(users.ID, users.ActiveStatus, users.LastOptTime).Where(users.ID.In(uids...)).Find()
+	if err != nil {
+		global.Logger.Errorf("查询用户表失败 %s", err)
+		return resp.ErrorResponseData("系统繁忙，请稍后再试"), errors.New("Business Error")
+	}
+
+	// 数据转换
+	friendListVO := make([]domainResp.UserContactResp, 0)
+	for _, friend := range friendList {
+		friendResp := domainResp.UserContactResp{
+			Uid:          friend.ID,
+			LastOptTime:  friend.LastOptTime.UnixMilli(),
+			ActiveStatus: int(friend.ActiveStatus),
+		}
+		friendListVO = append(friendListVO, friendResp)
+	}
+	pageResp.Data = friendListVO
+	return resp.SuccessResponseData(pageResp), nil
 }

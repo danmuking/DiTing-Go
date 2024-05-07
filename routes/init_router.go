@@ -23,8 +23,8 @@ func InitRouter() {
 
 // 初始化websocket
 func initWebSocket() {
-	http.HandleFunc("/socket", websocketService.Connect)
-	log.Fatal(http.ListenAndServe("localhost:8080", nil))
+	http.HandleFunc("/websocket", websocketService.Connect)
+	log.Fatal(http.ListenAndServe("localhost:5001", nil))
 }
 
 // 初始化gin
@@ -54,7 +54,7 @@ func initGin() {
 		//获取好友申请列表
 		apiUser.GET("/getApplyList", controller.GetUserApplyController)
 		//获取好友列表
-		apiUser.GET("/getFriendList", service.GetFriendList)
+		apiUser.GET("/getFriendList", controller.GetFriendListController)
 		// 判断是否是好友
 		apiUser.GET("/isFriend/:friendUid", controller.IsFriendController)
 		//好友申请未读数量
