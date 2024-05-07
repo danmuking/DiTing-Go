@@ -23,8 +23,8 @@ func InitRouter() {
 
 // 初始化websocket
 func initWebSocket() {
-	http.HandleFunc("/socket", websocketService.Connect)
-	log.Fatal(http.ListenAndServe("localhost:8080", nil))
+	http.HandleFunc("/websocket", websocketService.Connect)
+	log.Fatal(http.ListenAndServe("localhost:5001", nil))
 }
 
 // 初始化gin
