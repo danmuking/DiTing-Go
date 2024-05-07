@@ -150,3 +150,19 @@ func UnreadApplyNumController(c *gin.Context) {
 	}
 	resp.ReturnSuccessResponse(c, response)
 }
+
+func GetFriendListController(c *gin.Context) {
+	uid := c.GetInt64("uid")
+	pageRequest := pkgReq.PageReq{}
+	if err := c.ShouldBindQuery(&pageRequest); err != nil { //ShouldBind()会自动推导
+		resp.ErrorResponse(c, "参数错误")
+		return
+	}
+	response, err := service.GetFriendListService(uid, pageRequest)
+	if err != nil {
+		c.Abort()
+		resp.ReturnErrorResponse(c, response)
+		return
+	}
+	resp.ReturnSuccessResponse(c, response)
+}

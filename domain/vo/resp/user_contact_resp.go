@@ -1,7 +1,7 @@
 package resp
 
 type UserContactResp struct {
-	ID     int64  `json:"ID"`     // 用户ID
-	Name   string `json:"name"`   // 用户昵称
-	Avatar string `json:"avatar"` // 用户头像
+	Uid          int64 `json:"Uid"`          // 用户ID
+	ActiveStatus int   `json:"activeStatus"` // 用户状态
+	LastOptTime  int64 `json:"lastOptTime"`  // 最后操作时间
 }
