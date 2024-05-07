@@ -48,3 +48,21 @@ func GetContactListController(c *gin.Context) {
 	}
 	resp.ReturnSuccessResponse(c, response)
 }
+
+func GetNewContactListController(c *gin.Context) {
+	uid := c.GetInt64("uid")
+
+	getNewContentListReq := req.GetNewContentListReq{}
+	if err := c.ShouldBindQuery(&getNewContentListReq); err != nil { //ShouldBind()会自动推导
+		resp.ErrorResponse(c, "参数错误")
+		c.Abort()
+		return
+	}
+	response, err := service.GetNewContactListService(uid, getNewContentListReq)
+	if err != nil {
+		c.Abort()
+		resp.ReturnErrorResponse(c, response)
+		return
+	}
+	resp.ReturnSuccessResponse(c, response)
+}

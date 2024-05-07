@@ -3,9 +3,7 @@ package service
 import (
 	"DiTing-Go/dal"
 	"DiTing-Go/dal/model"
-	"DiTing-Go/domain/dto"
 	"DiTing-Go/domain/enum"
-	domainModel "DiTing-Go/domain/model"
 	"DiTing-Go/domain/vo/req"
 	domainResp "DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
@@ -151,79 +149,129 @@ func GetContactListService(uid int64, pageReq pkgReq.PageReq) (pkgResp.ResponseD
 	return pkgResp.SuccessResponseData(pageResp), nil
 }
 
-// 获取会话dto
-func getContactDto(contact model.Contact) (*dto.ContactDto, error) {
+// FIXME: 合并GetNewContactListService和GetContactListService
+func GetNewContactListService(uid int64, listReq req.GetNewContentListReq) (pkgResp.ResponseData, error) {
+	//FIXME:如果在同一毫秒内的更新会有问题
+	timestamp := listReq.Timestamp
+	contactTime := time.Unix(0, timestamp*1000*1000)
+
 	ctx := context.Background()
+	contact := global.Query.Contact
+	contactQ := contact.WithContext(ctx)
+	contactRList, err := contactQ.Where(contact.UID.Eq(uid), contact.ActiveTime.Gt(contactTime)).Find()
+	if err != nil {
+		global.Logger.Errorf("查询会话列表失败 %s", err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
+	// 收集会话id
+	contactRoomIdList := make([]int64, 0)
+	for _, contact := range contactRList {
+		contactRoomIdList = append(contactRoomIdList, contact.RoomID)
+	}
+
+	// 查询出对应的房间信息
 	room := global.Query.Room
 	roomQ := room.WithContext(ctx)
-	msg := global.Query.Message
-	msgQ := msg.WithContext(ctx)
-	contactDto := new(dto.ContactDto)
-	contactDto.ID = contact.ID
 	// 查询房间类型
-	roomR, err := roomQ.Where(room.ID.Eq(contact.RoomID)).First()
+	roomRList, err := roomQ.Where(room.ID.In(contactRoomIdList...)).Find()
 	if err != nil {
 		global.Logger.Errorf("查询房间失败 %s", err)
-		return nil, err
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
-	contactDto.RoomID = roomR.ID
-	// 如果是个人会话，名称是对方的昵称
-	if roomR.Type == enum.PERSONAL {
-		// 查询好友房间信息
-		roomFriend := global.Query.RoomFriend
-		roomFriendQ := roomFriend.WithContext(ctx)
-		roomFriendR, err := roomFriendQ.Where(roomFriend.RoomID.Eq(roomR.ID)).First()
-		if err != nil {
-			global.Logger.Errorf("查询好友房间失败 %s", err)
-			return nil, err
+	// 收集单聊房间的id
+	roomFriendIdList := make([]int64, 0)
+	// 收集群聊房间的id
+	roomGroupIdList := make([]int64, 0)
+	for _, room := range roomRList {
+		if room.Type == enum.PERSONAL {
+			roomFriendIdList = append(roomFriendIdList, room.ID)
+		} else if room.Type == enum.GROUP {
+			roomGroupIdList = append(roomGroupIdList, room.ID)
 		}
-		var friendUid int64
-		if roomFriendR.Uid1 == contact.UID {
-			friendUid = roomFriendR.Uid2
-		} else {
-			friendUid = roomFriendR.Uid1
-		}
-		user := global.Query.User
-		userQ := user.WithContext(ctx)
-		userR, err := userQ.Where(user.ID.Eq(friendUid)).First()
-		if err != nil {
-			global.Logger.Errorf("查询用户失败 %s", err)
-			return nil, err
-		}
-		contactDto.Name = userR.Name
-		contactDto.Avatar = userR.Avatar
-		contactDto.LastTime = contact.ActiveTime.UnixNano()
 	}
-	count, err := msgQ.Where(msg.RoomID.Eq(contact.RoomID), msg.DeleteStatus.Eq(enum.NORMAL), msg.CreateTime.Gt(contact.ReadTime)).Limit(99).Count()
-	if err != nil {
-		global.Logger.Errorf("统计未读数失败 %s", err)
-		return nil, err
-	} else if roomR.Type == enum.GROUP {
-		// 查询群聊表
-		roomGroup := global.Query.RoomGroup
-		roomGroupQ := roomGroup.WithContext(ctx)
-		roomGroupR, err := roomGroupQ.Where(roomGroup.RoomID.Eq(roomR.ID)).First()
-		if err != nil {
-			global.Logger.Errorf("查询群聊失败 %s", err)
-			return nil, err
-		}
-		contactDto.Name = roomGroupR.Name
-		contactDto.Avatar = roomGroupR.Avatar
-		contactDto.LastTime = contact.ActiveTime.UnixNano()
-		// TODO:热点群聊
 
-	}
-	// TODO: 支持多种消息
-	msgR, err := msgQ.Where(msg.ID.Eq(contact.LastMsgID)).First()
-	message := domainModel.Message(*msgR)
+	// 查询好友房间信息
+	roomFriend := global.Query.RoomFriend
+	roomFriendQ := roomFriend.WithContext(ctx)
+	roomFriendRList, err := roomFriendQ.Where(roomFriend.RoomID.In(roomFriendIdList...)).Find()
 	if err != nil {
-		global.Logger.Errorf("查询消息失败 %s", err)
-		return nil, err
+		global.Logger.Errorf("查询好友房间失败 %s", err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
-	contactDto.LastMsg = message.GetContactMsg()
-	contactDto.UnreadCount = int32(count)
-	// TODO: 群聊
-	return contactDto, nil
+	// 查询用户信息
+	uidList := make([]int64, 0)
+	for _, roomFriend := range roomFriendRList {
+		if roomFriend.Uid1 == uid {
+			uidList = append(uidList, roomFriend.Uid2)
+		} else {
+			uidList = append(uidList, roomFriend.Uid1)
+		}
+	}
+	user := global.Query.User
+	userQ := user.WithContext(ctx)
+	userRList, err := userQ.Where(user.ID.In(uidList...)).Find()
+	if err != nil {
+		global.Logger.Errorf("查询用户失败 %s", err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
+	// 查询群聊房间信息
+	roomGroup := global.Query.RoomGroup
+	roomGroupQ := roomGroup.WithContext(ctx)
+	roomGroupRList, err := roomGroupQ.Where(roomGroup.RoomID.In(roomGroupIdList...)).Find()
+	if err != nil {
+		global.Logger.Errorf("查询群聊房间失败 %s", err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
+	// 查询最后一条消息
+	lastMsgIdList := make([]int64, 0)
+	for _, contact := range contactRList {
+		lastMsgIdList = append(lastMsgIdList, contact.LastMsgID)
+	}
+	msg := global.Query.Message
+	msgQ := msg.WithContext(ctx)
+	msgRList, err := msgQ.Where(msg.ID.In(lastMsgIdList...)).Find()
+	if err != nil {
+		global.Logger.Errorf("查询最后一条消息失败 %s", err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
+	// 查询未读消息数
+	//fixme: 有没有更好的方法
+	countMap := cmap.New[int64]()
+	var wg sync.WaitGroup
+	err = nil
+	for _, contact := range contactRList {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var count int64
+			count, err = msgQ.Where(msg.RoomID.Eq(contact.RoomID), msg.DeleteStatus.Eq(pkgEnum.NORMAL), msg.CreateTime.Gt(contact.ReadTime)).Limit(99).Count()
+			if err != nil {
+				global.Logger.Errorf("统计未读数失败 %s", err)
+			}
+			countMap.Set(strconv.FormatInt(contact.RoomID, 10), count)
+		}()
+	}
+	wg.Wait()
+	if err != nil {
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
+	// 类型转换
+	temp := make([]model.Contact, 0)
+	for _, contact := range contactRList {
+		temp = append(temp, *contact)
+	}
+
+	// 拼装结果
+	contactDaoList := adapter.BuildContactDaoList(temp, userRList, msgRList, roomRList, roomFriendRList, roomGroupRList, countMap)
+
+	return pkgResp.SuccessResponseData(resp.PageResp{
+		Data: contactDaoList,
+	}), nil
 }
 
 func GetContactDetailService(c *gin.Context) {

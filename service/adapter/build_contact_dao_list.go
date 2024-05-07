@@ -42,7 +42,11 @@ func BuildContactDaoList(contactList []model.Contact, userList []*model.User, me
 		roomDto := RoomDto{}
 		roomDto.ID = room.ID
 		if room.Type == enum.PERSONAL {
-			user := userMap[roomFriendMap[room.ID].Uid2]
+			userId := roomFriendMap[room.ID].Uid1
+			if userId == contactList[0].UID {
+				userId = roomFriendMap[room.ID].Uid2
+			}
+			user := userMap[userId]
 			roomDto.Avatar = user.Avatar
 			roomDto.Name = user.Name
 			roomDto.Type = enum.PERSONAL
