@@ -37,21 +37,21 @@ func init() {
 		global.Logger.Panicf("start consumer error: %s", err.Error())
 	}
 
-	// 设置推送消费者
-	rocketUpdateContactConsumer, _ := rocketmq.NewPushConsumer(
-		//消费组
-		consumer.WithGroupName(enum.NewMessageTopic+"-update-contact"),
-		// namesrv地址
-		consumer.WithNameServer([]string{host}),
-	)
-	err = rocketUpdateContactConsumer.Subscribe(enum.NewMessageTopic, consumer.MessageSelector{}, SendMsgEvent)
-	if err != nil {
-		global.Logger.Panicf("subscribe error: %s", err.Error())
-	}
-	err = rocketUpdateContactConsumer.Start()
-	if err != nil {
-		global.Logger.Panicf("start consumer error: %s", err.Error())
-	}
+	//// 设置推送消费者
+	//rocketUpdateContactConsumer, _ := rocketmq.NewPushConsumer(
+	//	//消费组
+	//	consumer.WithGroupName(enum.NewMessageTopic+"-update-contact"),
+	//	// namesrv地址
+	//	consumer.WithNameServer([]string{host}),
+	//)
+	//err := rocketUpdateContactConsumer.Subscribe(enum.NewMessageTopic, consumer.MessageSelector{}, SendMsgEvent)
+	//if err != nil {
+	//	global.Logger.Panicf("subscribe error: %s", err.Error())
+	//}
+	//err = rocketUpdateContactConsumer.Start()
+	//if err != nil {
+	//	global.Logger.Panicf("start consumer error: %s", err.Error())
+	//}
 }
 
 func UpdateContactEvent(ctx context.Context, ext ...*primitive.MessageExt) (consumer.ConsumeResult, error) {
@@ -67,6 +67,11 @@ func UpdateContactEvent(ctx context.Context, ext ...*primitive.MessageExt) (cons
 		err = updateContact(msg)
 		if err != nil {
 			global.Logger.Errorf("更新会话失败 %s", err)
+			return consumer.ConsumeRetryLater, nil
+		}
+		err = sendMsg(msg)
+		if err != nil {
+			global.Logger.Errorf("发送消息失败 %s", err)
 			return consumer.ConsumeRetryLater, nil
 		}
 	}
@@ -176,7 +181,6 @@ func sendMsg(msg model.Message) error {
 			return err
 		}
 		// 发送新消息事件
-
 		err := service.Send(roomFriendR.Uid1, str)
 		if err != nil {
 			return err
