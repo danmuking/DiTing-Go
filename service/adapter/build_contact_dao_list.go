@@ -64,7 +64,9 @@ func BuildContactDaoList(contactList []model.Contact, userList []*model.User, me
 		contactDto.RoomID = contact.RoomID
 		contactDto.Avatar = roomMap[contact.RoomID].Avatar
 		contactDto.Name = roomMap[contact.RoomID].Name
-		contactDto.LastMsg = msgMap[contact.LastMsgID].Content
+		if msgMap[contact.LastMsgID] != nil {
+			contactDto.LastMsg = msgMap[contact.LastMsgID].Content
+		}
 		contactDto.LastTime = contact.ActiveTime.UnixMilli()
 		//TODO：统计未读消息数
 		unreadCount, _ := countMap.Get(strconv.FormatInt(contact.RoomID, 10))

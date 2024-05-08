@@ -539,7 +539,7 @@ func GetGroupMemberListService(c *gin.Context) {
 	// 查询房间表
 	room := global.Query.Room
 	roomQ := room.WithContext(ctx)
-	roomR, err := roomQ.Where(room.ID.Eq(getGroupMemberListReq.ID)).First()
+	roomR, err := roomQ.Where(room.ID.Eq(getGroupMemberListReq.RoomId)).First()
 	if err != nil {
 		resp.ErrorResponse(c, "查询群聊失败")
 		global.Logger.Errorf("查询房间失败 %s", err)
@@ -576,7 +576,7 @@ func GetGroupMemberListService(c *gin.Context) {
 	// 查询群组成员表,联表游标翻页
 	user := global.Query.User
 	userQ := user.WithContext(ctx)
-	if err := userQ.Select(user.Name, user.Avatar, user.ActiveStatus, user.LastOptTime).LeftJoin(groupMemberQ, user.ID.EqCol(groupMember.UID)).Where(groupMember.GroupID.Eq(roomGroupR.ID), user.ActiveStatus.Eq(int32(status)), user.LastOptTime.Gt(activeTime)).Limit(getGroupMemberListReq.PageSize).Scan(&userR); err != nil {
+	if err := userQ.Select(user.ID, user.Name, user.Avatar, user.ActiveStatus, user.LastOptTime).LeftJoin(groupMemberQ, user.ID.EqCol(groupMember.UID)).Where(groupMember.GroupID.Eq(roomGroupR.ID), user.ActiveStatus.Eq(int32(status)), user.LastOptTime.Gt(activeTime)).Limit(getGroupMemberListReq.PageSize).Scan(&userR); err != nil {
 		resp.ErrorResponse(c, "查询群聊失败")
 		global.Logger.Errorf("查询群组成员表失败 %s", err)
 		c.Abort()
@@ -585,7 +585,7 @@ func GetGroupMemberListService(c *gin.Context) {
 	// 不足，用不在线的补充
 	if len(userR) < getGroupMemberListReq.PageSize && status == 1 {
 		var add []dto.GetGroupMemberDto
-		if err := userQ.Select(user.Name, user.Avatar, user.ActiveStatus, user.LastOptTime).LeftJoin(groupMemberQ, user.ID.EqCol(groupMember.UID)).Where(groupMember.GroupID.Eq(roomGroupR.ID), user.ActiveStatus.Eq(2)).Limit(getGroupMemberListReq.PageSize - len(userR)).Scan(&add); err != nil {
+		if err := userQ.Select(user.ID, user.Name, user.Avatar, user.ActiveStatus, user.LastOptTime).LeftJoin(groupMemberQ, user.ID.EqCol(groupMember.UID)).Where(groupMember.GroupID.Eq(roomGroupR.ID), user.ActiveStatus.Eq(2)).Limit(getGroupMemberListReq.PageSize - len(userR)).Scan(&add); err != nil {
 			resp.ErrorResponse(c, "查询群聊失败")
 			global.Logger.Errorf("查询群组成员表失败 %s", err)
 			c.Abort()
@@ -773,6 +773,6 @@ func genCursor(users []dto.GetGroupMemberDto) string {
 	}
 	status := users[len(users)-1].ActiveStatus
 	activeTime := users[len(users)-1].LastOptTime
-	newCursor := fmt.Sprintf("%d_%d", status, activeTime.Unix())
+	newCursor := fmt.Sprintf("%d_%d", status, activeTime.UnixMilli())
 	return newCursor
 }

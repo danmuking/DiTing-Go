@@ -14,7 +14,6 @@ import (
 	"DiTing-Go/pkg/utils"
 	"DiTing-Go/service/adapter"
 	"context"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
@@ -132,9 +131,7 @@ func GetContactListService(uid int64, pageReq pkgReq.PageReq) (pkgResp.ResponseD
 
 			defer wg.Done()
 			var count int64
-			start := time.Now()
 			count, err = msgQ.Where(msg.RoomID.Eq(contact.RoomID), msg.DeleteStatus.Eq(pkgEnum.NORMAL), msg.CreateTime.Gt(contact.ReadTime)).Limit(99).Count()
-			fmt.Printf("第%d个协程耗时：%v\n", i, time.Since(start))
 			if err != nil {
 				global.Logger.Errorf("统计未读数失败 %s", err)
 			}
@@ -332,9 +329,12 @@ func GetContactDetail(roomID int64, pageRequest pkgReq.PageReq) (*pkgResp.PageRe
 		global.Logger.Errorf("查询消息失败: %s", err.Error())
 		return nil, err
 	}
-	msgList := pageResp.Data.(*[]model.Message)
+	msgList := *(pageResp.Data.(*[]model.Message))
+	for i, j := 0, len(msgList)-1; i < j; i, j = i+1, j-1 {
+		msgList[i], msgList[j] = msgList[j], msgList[i]
+	}
 	userIdMap := make(map[int64]*int64)
-	for _, msg := range *msgList {
+	for _, msg := range msgList {
 		if userIdMap[msg.FromUID] == nil {
 			userIdMap[msg.FromUID] = &msg.FromUID
 		}
@@ -359,7 +359,7 @@ func GetContactDetail(roomID int64, pageRequest pkgReq.PageReq) (*pkgResp.PageRe
 	}
 
 	// 拼装结果
-	pageResp.Data = adapter.BuildMessageRespByMsgAndUser(msgList, userMap)
+	pageResp.Data = adapter.BuildMessageRespByMsgAndUser(&msgList, userMap)
 	return pageResp, nil
 }
 func GetNewMsgService(msgId int64, roomId int64) (pkgResp.ResponseData, error) {
