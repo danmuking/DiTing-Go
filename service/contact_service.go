@@ -150,15 +150,14 @@ func GetContactListService(uid int64, pageReq pkgReq.PageReq) (pkgResp.ResponseD
 }
 
 // FIXME: 合并GetNewContactListService和GetContactListService
-func GetNewContactListService(uid int64, listReq req.GetNewContentListReq) (pkgResp.ResponseData, error) {
+func GetNewContactListService(uid int64, timestamp int64) (pkgResp.ResponseData, error) {
 	//FIXME:如果在同一毫秒内的更新会有问题
-	timestamp := listReq.Timestamp
 	contactTime := time.Unix(0, timestamp*1000*1000)
 
 	ctx := context.Background()
 	contact := global.Query.Contact
 	contactQ := contact.WithContext(ctx)
-	contactRList, err := contactQ.Where(contact.UID.Eq(uid), contact.ActiveTime.Gt(contactTime)).Find()
+	contactRList, err := contactQ.Where(contact.UID.Eq(uid), contact.ActiveTime.Gte(contactTime)).Find()
 	if err != nil {
 		global.Logger.Errorf("查询会话列表失败 %s", err)
 		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
@@ -269,9 +268,7 @@ func GetNewContactListService(uid int64, listReq req.GetNewContentListReq) (pkgR
 	// 拼装结果
 	contactDaoList := adapter.BuildContactDaoList(temp, userRList, msgRList, roomRList, roomFriendRList, roomGroupRList, countMap)
 
-	return pkgResp.SuccessResponseData(resp.PageResp{
-		Data: contactDaoList,
-	}), nil
+	return pkgResp.SuccessResponseData(contactDaoList), nil
 }
 
 func GetContactDetailService(c *gin.Context) {

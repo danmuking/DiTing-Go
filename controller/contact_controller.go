@@ -58,7 +58,7 @@ func GetNewContactListController(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	response, err := service.GetNewContactListService(uid, getNewContentListReq)
+	response, err := service.GetNewContactListService(uid, getNewContentListReq.Timestamp)
 	if err != nil {
 		c.Abort()
 		resp.ReturnErrorResponse(c, response)
