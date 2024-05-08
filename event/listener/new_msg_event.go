@@ -6,6 +6,8 @@ import (
 	"DiTing-Go/domain/enum"
 	"DiTing-Go/global"
 	"DiTing-Go/pkg/utils"
+	wsEnum "DiTing-Go/websocket/domain/enum"
+	resp2 "DiTing-Go/websocket/domain/vo/resp"
 	"DiTing-Go/websocket/service"
 	"context"
 	"encoding/json"
@@ -156,6 +158,10 @@ func sendMsg(msg model.Message) error {
 		global.Logger.Errorf("查询房间失败 %s", err)
 		return err
 	}
+	msgBody := resp2.NewMessageResp{
+		Type: wsEnum.NewMessage,
+	}
+	str, _ := json.Marshal(msgBody)
 	// 单聊
 	if room.Type == enum.PERSONAL {
 		roomFriendQ := global.Query.WithContext(context.Background()).RoomFriend
@@ -170,8 +176,15 @@ func sendMsg(msg model.Message) error {
 			return err
 		}
 		// 发送新消息事件
-		service.Send(roomFriendR.Uid1)
-		service.Send(roomFriendR.Uid2)
+
+		err := service.Send(roomFriendR.Uid1, str)
+		if err != nil {
+			return err
+		}
+		err = service.Send(roomFriendR.Uid2, str)
+		if err != nil {
+			return err
+		}
 		//	TODO:群聊
 	} else if room.Type == enum.GROUP {
 		roomGroupQ := global.Query.WithContext(context.Background()).RoomGroup
@@ -181,7 +194,7 @@ func sendMsg(msg model.Message) error {
 		groupMembers, _ := groupMemberQ.Where(query.GroupMember.GroupID.Eq(roomGroup.ID)).Find()
 		// 发送新消息事件
 		for _, groupMember := range groupMembers {
-			service.Send(groupMember.UID)
+			service.Send(groupMember.UID, str)
 		}
 	}
 	return nil

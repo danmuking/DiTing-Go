@@ -9,6 +9,8 @@ import (
 	pkgEnum "DiTing-Go/pkg/domain/enum"
 	"DiTing-Go/pkg/domain/vo/resp"
 	"context"
+	"github.com/apache/rocketmq-client-go/v2/primitive"
+	"github.com/goccy/go-json"
 	"log"
 	"time"
 )
@@ -38,7 +40,12 @@ func SendTextMsgService(uid int64, msgReq req.MessageReq) (resp.ResponseData, er
 		return resp.ErrorResponseData("消息发送失败"), err
 	}
 	// 发送新消息事件
-	global.Bus.Publish(enum.NewMessageEvent, msg)
+	newMsgByte, _ := json.Marshal(msg)
+	rMsg := &primitive.Message{
+		Topic: enum.NewMessageTopic,
+		Body:  newMsgByte,
+	}
+	_, _ = global.RocketProducer.SendSync(ctx, rMsg)
 
 	msgResp := domainResp.MessageResp{
 		FromUser: domainResp.MsgUser{

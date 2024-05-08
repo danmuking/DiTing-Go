@@ -5,7 +5,6 @@ import (
 	"DiTing-Go/domain/enum"
 	"DiTing-Go/global"
 	"DiTing-Go/utils/jsonUtils"
-	"DiTing-Go/websocket/service"
 	"context"
 	"github.com/apache/rocketmq-client-go/v2"
 	"github.com/apache/rocketmq-client-go/v2/consumer"
@@ -52,6 +51,6 @@ func friendApplyEvent(ctx context.Context, ext ...*primitive.MessageExt) (consum
 
 func friendApply(apply model.UserApply) error {
 	// 发送新消息事件
-	service.Send(apply.TargetID)
+	//service.Send(apply.TargetID)
 	return nil
 }

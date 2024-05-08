@@ -105,7 +105,7 @@ func initGin() {
 // TODO:测试使用
 func test(c *gin.Context) {
 	msg := new(global.Msg)
-	msg.Uid = 20017
-	websocketService.Send(msg.Uid)
+	msg.Uid = 2
+	websocketService.Send(msg.Uid, []byte("{\"type\":4}"))
 	resp.SuccessResponse(c, nil)
 }
