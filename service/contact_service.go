@@ -14,6 +14,7 @@ import (
 	"DiTing-Go/pkg/utils"
 	"DiTing-Go/service/adapter"
 	"context"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
@@ -125,17 +126,25 @@ func GetContactListService(uid int64, pageReq pkgReq.PageReq) (pkgResp.ResponseD
 	countMap := cmap.New[int64]()
 	var wg sync.WaitGroup
 	err = nil
-	for _, contact := range *contactList {
+	for i, contact := range *contactList {
 		wg.Add(1)
 		go func() {
+
 			defer wg.Done()
 			var count int64
+			start := time.Now()
 			count, err = msgQ.Where(msg.RoomID.Eq(contact.RoomID), msg.DeleteStatus.Eq(pkgEnum.NORMAL), msg.CreateTime.Gt(contact.ReadTime)).Limit(99).Count()
+			fmt.Printf("第%d个协程耗时：%v\n", i, time.Since(start))
 			if err != nil {
 				global.Logger.Errorf("统计未读数失败 %s", err)
 			}
 			countMap.Set(strconv.FormatInt(contact.RoomID, 10), count)
+
 		}()
+		if i == 2 {
+			break
+		}
+
 	}
 	wg.Wait()
 	if err != nil {
@@ -151,7 +160,6 @@ func GetContactListService(uid int64, pageReq pkgReq.PageReq) (pkgResp.ResponseD
 
 // FIXME: 合并GetNewContactListService和GetContactListService
 func GetNewContactListService(uid int64, timestamp int64) (pkgResp.ResponseData, error) {
-	//FIXME:如果在同一毫秒内的更新会有问题
 	contactTime := time.Unix(0, timestamp*1000*1000)
 
 	ctx := context.Background()
