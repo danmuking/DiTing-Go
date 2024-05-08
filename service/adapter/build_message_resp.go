@@ -3,10 +3,9 @@ package adapter
 import (
 	"DiTing-Go/dal/model"
 	"DiTing-Go/domain/vo/resp"
-	pkgResp "DiTing-Go/pkg/domain/vo/resp"
 )
 
-func BuildMessageRespByMsgAndUser(pageResp *pkgResp.PageResp, msgList *[]model.Message, userMap map[int64]*model.User) *pkgResp.PageResp {
+func BuildMessageRespByMsgAndUser(msgList *[]model.Message, userMap map[int64]*model.User) []resp.MessageResp {
 	var messageRespList []resp.MessageResp
 	for i := range len(*msgList) {
 		messageResp := resp.MessageResp{}
@@ -29,6 +28,5 @@ func BuildMessageRespByMsgAndUser(pageResp *pkgResp.PageResp, msgList *[]model.M
 
 		messageRespList = append(messageRespList, messageResp)
 	}
-	pageResp.Data = messageRespList
-	return pageResp
+	return messageRespList
 }

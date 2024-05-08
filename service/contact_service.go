@@ -354,9 +354,55 @@ func GetContactDetail(roomID int64, pageRequest pkgReq.PageReq) (*pkgResp.PageRe
 	}
 
 	// 拼装结果
-	pageResp = adapter.BuildMessageRespByMsgAndUser(pageResp, msgList, userMap)
+	pageResp.Data = adapter.BuildMessageRespByMsgAndUser(msgList, userMap)
 	return pageResp, nil
 }
+func GetNewMsgService(msgId int64, roomId int64) (pkgResp.ResponseData, error) {
+	ctx := context.Background()
+	// 查询消息
+	msg := global.Query.Message
+	msgQ := msg.WithContext(ctx)
+	msgRList, err := msgQ.Where(msg.ID.Gt(msgId), msg.RoomID.Eq(roomId)).Find()
+	if err != nil {
+		global.Logger.Errorf("查询消息失败: %s", err.Error())
+		return pkgResp.ErrorResponseData("接收消息失败"), err
+	}
+
+	userIdMap := make(map[int64]*int64)
+	for _, msg := range msgRList {
+		if userIdMap[msg.FromUID] == nil {
+			userIdMap[msg.FromUID] = &msg.FromUID
+		}
+	}
+
+	// 转换成列表
+	userIdList := make([]int64, 0)
+	for _, uid := range userIdMap {
+		userIdList = append(userIdList, *uid)
+	}
+	// 查询用户信息
+	user := global.Query.User
+	userQ := user.WithContext(ctx)
+	users, err := userQ.Where(user.ID.In(userIdList...)).Find()
+	if err != nil {
+		global.Logger.Errorf("查询用户失败: %s", err.Error())
+		return pkgResp.ErrorResponseData("接收消息失败"), err
+	}
+	userMap := make(map[int64]*model.User)
+	for _, user := range users {
+		userMap[user.ID] = user
+	}
+
+	temp := make([]model.Message, 0)
+	for _, msg := range msgRList {
+		temp = append(temp, *msg)
+	}
+
+	// 拼装结果
+	data := adapter.BuildMessageRespByMsgAndUser(&temp, userMap)
+	return pkgResp.SuccessResponseData(data), nil
+}
+
 func timestampToTime(timestampStr *string) (*string, error) {
 	if timestampStr != nil && *timestampStr != "" {
 		// 时间戳转时间

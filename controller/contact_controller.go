@@ -66,3 +66,20 @@ func GetNewContactListController(c *gin.Context) {
 	}
 	resp.ReturnSuccessResponse(c, response)
 }
+
+func GetNewMsgListController(c *gin.Context) {
+
+	getNewMsgListReq := req.GetNewMsgListReq{}
+	if err := c.ShouldBindQuery(&getNewMsgListReq); err != nil { //ShouldBind()会自动推导
+		resp.ErrorResponse(c, "参数错误")
+		c.Abort()
+		return
+	}
+	response, err := service.GetNewMsgService(getNewMsgListReq.MsgId, getNewMsgListReq.RoomId)
+	if err != nil {
+		c.Abort()
+		resp.ReturnErrorResponse(c, response)
+		return
+	}
+	resp.ReturnSuccessResponse(c, response)
+}

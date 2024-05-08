@@ -81,6 +81,7 @@ func initGin() {
 		apiContact.GET("getContactList", controller.GetContactListController)
 		apiContact.GET("getNewContactList", controller.GetNewContactListController)
 		apiContact.GET("getMessageList", service.GetContactDetailService)
+		apiContact.GET("getNewMsgList", controller.GetNewMsgListController)
 		apiContact.POST("userInfo/batch", controller.GetUserInfoBatchController)
 	}
 
