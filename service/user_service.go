@@ -10,6 +10,7 @@ import (
 	pkgResp "DiTing-Go/pkg/domain/vo/resp"
 	_ "DiTing-Go/pkg/setting"
 	"DiTing-Go/pkg/utils"
+	"DiTing-Go/service/adapter"
 	"context"
 	"fmt"
 	"github.com/apache/rocketmq-client-go/v2/primitive"
@@ -93,4 +94,37 @@ func LoginService(loginReq req.UserLoginReq) (pkgResp.ResponseData, error) {
 		Avatar: userR.Avatar,
 	}
 	return pkgResp.SuccessResponseData(userResp), nil
+}
+
+func GetUserInfoByNameService(uid int64, name string) (pkgResp.ResponseData, error) {
+	ctx := context.Background()
+	user := global.Query.User
+	userQ := user.WithContext(ctx)
+	userRList, err := userQ.Where(user.Name.Like(name + "%")).Limit(5).Find()
+	if err != nil {
+		global.Logger.Errorf("查询用户数据失败: %v", err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+	uidList := make([]int64, 0)
+	for _, userR := range userRList {
+		uidList = append(uidList, userR.ID)
+	}
+	//	搜索好友关系
+	userApply := global.Query.UserApply
+	userApplyQ := userApply.WithContext(ctx)
+	applyList, err := userApplyQ.Where(userApply.UID.Eq(uid), userApply.TargetID.In(uidList...)).Find()
+	if err != nil {
+		global.Logger.Errorf("查询好友关系失败: %v", err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+	//	查询好友关系
+	userFriend := global.Query.UserFriend
+	userFriendQ := userFriend.WithContext(ctx)
+	friendList, err := userFriendQ.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.In(uidList...)).Find()
+	if err != nil {
+		global.Logger.Errorf("查询好友关系失败: %v", err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+	userRespList := adapter.BuildUserInfoByNameResp(userRList, applyList, friendList)
+	return pkgResp.SuccessResponseData(userRespList), nil
 }

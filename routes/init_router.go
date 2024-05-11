@@ -59,6 +59,8 @@ func initGin() {
 		apiUser.GET("/isFriend/:friendUid", controller.IsFriendController)
 		//好友申请未读数量
 		apiUser.GET("/unreadApplyNum", controller.UnreadApplyNumController)
+		//根据好友昵称搜索好友
+		apiUser.GET("/getUserInfoByName", controller.GetUserInfoByNameController)
 		// TODO:测试使用
 		apiUser.GET("/test", test)
 	}

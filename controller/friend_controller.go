@@ -166,3 +166,20 @@ func GetFriendListController(c *gin.Context) {
 	}
 	resp.ReturnSuccessResponse(c, response)
 }
+
+// GetUserInfoByNameController 根据好友昵称搜索好友
+func GetUserInfoByNameController(c *gin.Context) {
+	uid := c.GetInt64("uid")
+	getUserInfoByNameReq := req.GetUserInfoByNameReq{}
+	if err := c.ShouldBindQuery(&getUserInfoByNameReq); err != nil { //ShouldBind()会自动推导
+		resp.ErrorResponse(c, "参数错误")
+		return
+	}
+	response, err := service.GetUserInfoByNameService(uid, getUserInfoByNameReq.Name)
+	if err != nil {
+		c.Abort()
+		resp.ReturnErrorResponse(c, response)
+		return
+	}
+	resp.ReturnSuccessResponse(c, response)
+}
