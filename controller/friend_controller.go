@@ -46,7 +46,7 @@ func ApplyFriendController(c *gin.Context) {
 func DeleteFriendController(c *gin.Context) {
 	uid := c.GetInt64("uid")
 	deleteFriendReq := req.DeleteFriendReq{}
-	if err := c.ShouldBindUri(&deleteFriendReq); err != nil {
+	if err := c.ShouldBind(&deleteFriendReq); err != nil {
 		resp.ErrorResponse(c, "参数错误")
 		return
 	}

@@ -1,5 +1,5 @@
 package req
 
 type DeleteFriendReq struct {
-	Uid int64 `uri:"uid" binding:"required"`
+	Uid int64 `json:"uid" binding:"required"`
 }
