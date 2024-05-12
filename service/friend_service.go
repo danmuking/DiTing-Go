@@ -496,7 +496,7 @@ func GetFriendListService(uid int64, pageReq pkgReq.PageReq) (resp.ResponseData,
 	// 获取 UserFriend 表中 uid = uid 的好友的uid组成的集合
 	db := dal.DB
 	userFriend := make([]model.UserFriend, 0)
-	condition := []interface{}{"uid=?", strconv.FormatInt(uid, 10)}
+	condition := []interface{}{"uid=? and delete_status=?", strconv.FormatInt(uid, 10), enum.NORMAL}
 	pageResp, err := utils.Paginate(db, pageReq, &userFriend, "create_time", false, condition...)
 	if err != nil {
 		global.Logger.Errorf("分页查询失败 %v", err)
