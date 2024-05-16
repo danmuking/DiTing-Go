@@ -2,6 +2,7 @@ package controller
 
 import (
 	"DiTing-Go/domain/vo/req"
+	"DiTing-Go/global"
 	pkgReq "DiTing-Go/pkg/domain/vo/req"
 	"DiTing-Go/pkg/domain/vo/resp"
 	"DiTing-Go/service"
@@ -76,6 +77,24 @@ func GetNewMsgListController(c *gin.Context) {
 		return
 	}
 	response, err := service.GetNewMsgService(getNewMsgListReq.MsgId, getNewMsgListReq.RoomId)
+	if err != nil {
+		c.Abort()
+		resp.ReturnErrorResponse(c, response)
+		return
+	}
+	resp.ReturnSuccessResponse(c, response)
+}
+
+func CreateGroupController(c *gin.Context) {
+	uid := c.GetInt64("uid")
+	creatGroupReq := req.CreateGroupReq{}
+	if err := c.ShouldBind(&creatGroupReq); err != nil { //ShouldBind()会自动推导
+		resp.ErrorResponse(c, "参数错误")
+		global.Logger.Errorf("参数错误: %v", err)
+		c.Abort()
+		return
+	}
+	response, err := service.CreateGroupService(uid, creatGroupReq.UidList)
 	if err != nil {
 		c.Abort()
 		resp.ReturnErrorResponse(c, response)

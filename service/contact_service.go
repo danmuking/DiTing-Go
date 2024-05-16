@@ -409,7 +409,7 @@ func GetNewMsgService(msgId int64, roomId int64) (pkgResp.ResponseData, error) {
 }
 
 func timestampToTime(timestampStr *string) (*string, error) {
-	if timestampStr != nil && *timestampStr != "" {
+	if timestampStr != nil && *timestampStr != "" && *timestampStr != "null" {
 		// 时间戳转时间
 		timestamp, err := strconv.ParseInt(*timestampStr, 10, 64)
 		if err != nil {

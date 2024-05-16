@@ -68,7 +68,7 @@ func initGin() {
 	apiGroup.Use(middleware.JWT())
 	{
 		//创建群聊
-		apiGroup.POST("/create", service.CreateGroupService)
+		apiGroup.POST("/create", controller.CreateGroupController)
 		apiGroup.DELETE("/:id", service.DeleteGroupService)
 		apiGroup.POST("/join", service.JoinGroupService)
 		apiGroup.POST("/quit", service.QuitGroupService)
