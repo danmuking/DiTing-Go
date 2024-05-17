@@ -31,6 +31,7 @@ func initWebSocket() {
 func initGin() {
 	router := gin.Default()
 	router.Use(middleware.LoggerToFile())
+	router.Use(middleware.Cors())
 	//添加swagger访问路由
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	// 不需要身份验证的路由
