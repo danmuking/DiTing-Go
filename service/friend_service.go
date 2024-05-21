@@ -207,7 +207,7 @@ func AgreeFriend(uid, friendUid int64) error {
 	// 同意好友请求
 	userApplyR.Status = enum.YES
 	// 事务
-	tx := q.Begin()
+	tx := global.Query.Begin()
 	userApplyTx := tx.UserApply.WithContext(context.Background())
 	userFriendTx := tx.UserFriend.WithContext(context.Background())
 	if _, err = userApplyTx.Where(userApply.UID.Eq(friendUid), userApply.TargetID.Eq(uid)).Updates(userApplyR); err != nil {

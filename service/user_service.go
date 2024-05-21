@@ -3,7 +3,7 @@ package service
 import (
 	"DiTing-Go/dal/model"
 	"DiTing-Go/dal/query"
-	domainEnum "DiTing-Go/domain/enum"
+	"DiTing-Go/domain/enum"
 	"DiTing-Go/domain/vo/req"
 	"DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
@@ -19,8 +19,6 @@ import (
 	"gorm.io/gorm"
 )
 
-var q *query.Query = global.Query
-
 // RegisterService 用户注册
 func RegisterService(userReq req.UserRegisterReq) (pkgResp.ResponseData, error) {
 	ctx := context.Background()
@@ -30,7 +28,7 @@ func RegisterService(userReq req.UserRegisterReq) (pkgResp.ResponseData, error) 
 		return userQ.Where(user.Name.Eq(userReq.Username)).First()
 	}
 	userR := model.User{}
-	key := fmt.Sprintf(domainEnum.UserCacheByName, userReq.Username)
+	key := fmt.Sprintf(enum.UserCacheByName, userReq.Username)
 	err := utils.GetData(key, &userR, fun)
 	// 查到了
 	if err == nil {
@@ -65,7 +63,7 @@ func LoginService(loginReq req.UserLoginReq) (pkgResp.ResponseData, error) {
 		return userQ.Where(user.Name.Eq(loginReq.UserName), user.Password.Eq(loginReq.Password)).First()
 	}
 	userR := model.User{}
-	key := fmt.Sprintf(domainEnum.UserCacheByName, loginReq.UserName)
+	key := fmt.Sprintf(enum.UserCacheByName, loginReq.UserName)
 	err := utils.GetData(key, &userR, fun)
 	if err != nil {
 		global.Logger.Errorf("查询数据失败: %v", err)
@@ -83,7 +81,7 @@ func LoginService(loginReq req.UserLoginReq) (pkgResp.ResponseData, error) {
 		global.Logger.Errorf("json序列化失败 %v", err)
 	}
 	msg := &primitive.Message{
-		Topic: domainEnum.UserLoginTopic,
+		Topic: enum.UserLoginTopic,
 		Body:  userByte,
 	}
 	_, _ = global.RocketProducer.SendSync(ctx, msg)
