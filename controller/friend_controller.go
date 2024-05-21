@@ -42,7 +42,7 @@ func ApplyFriendController(c *gin.Context) {
 //	@Param		uid	body		int					true	"好友uid"
 //	@Success	200	{object}	resp.ResponseData	"成功"
 //	@Failure	500	{object}	resp.ResponseData	"内部错误"
-//	@Router		/api/user/delete/:uid [delete]
+//	@Router		/api/user/delete/ [delete]
 func DeleteFriendController(c *gin.Context) {
 	uid := c.GetInt64("uid")
 	deleteFriendReq := req.DeleteFriendReq{}
@@ -50,7 +50,7 @@ func DeleteFriendController(c *gin.Context) {
 		resp.ErrorResponse(c, "参数错误")
 		return
 	}
-	response, err := service.DeleteFriendService(uid, deleteFriendReq)
+	response, err := service.DeleteFriendService(uid, deleteFriendReq.Uid)
 	if err != nil {
 		c.Abort()
 		resp.ReturnErrorResponse(c, response)

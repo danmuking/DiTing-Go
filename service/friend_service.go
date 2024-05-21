@@ -5,7 +5,6 @@ import (
 	"DiTing-Go/dal/model"
 	"DiTing-Go/domain/dto"
 	"DiTing-Go/domain/enum"
-	"DiTing-Go/domain/vo/req"
 	"DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
 	pkgEnum "DiTing-Go/pkg/domain/enum"
@@ -290,13 +289,10 @@ func AgreeFriend(uid, friendUid int64) error {
 	return nil
 }
 
-// TODO:
 // DeleteFriendService 删除好友
 // 只删除好友关系和会话,其他耗时操作异步处理
-func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (pkgResp.ResponseData, error) {
+func DeleteFriendService(uid int64, deleteFriendUid int64) (pkgResp.ResponseData, error) {
 	ctx := context.Background()
-
-	deleteFriendUid := deleteFriendReq.Uid
 
 	uids := utils.Int64Slice{uid, deleteFriendUid}
 	sort.Sort(uids)
@@ -314,7 +310,7 @@ func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (pkgRes
 		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 	}
 	if !isFriend {
-		return pkgResp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("不存在好友关系"), errors.New("Business Error")
 	}
 
 	tx := global.Query.Begin()
