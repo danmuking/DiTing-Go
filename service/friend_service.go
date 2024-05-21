@@ -4,13 +4,13 @@ import (
 	"DiTing-Go/dal"
 	"DiTing-Go/dal/model"
 	"DiTing-Go/domain/dto"
-	domainEnum "DiTing-Go/domain/enum"
+	"DiTing-Go/domain/enum"
 	"DiTing-Go/domain/vo/req"
-	domainResp "DiTing-Go/domain/vo/resp"
+	"DiTing-Go/domain/vo/resp"
 	"DiTing-Go/global"
-	"DiTing-Go/pkg/domain/enum"
+	pkgEnum "DiTing-Go/pkg/domain/enum"
 	pkgReq "DiTing-Go/pkg/domain/vo/req"
-	"DiTing-Go/pkg/domain/vo/resp"
+	pkgResp "DiTing-Go/pkg/domain/vo/resp"
 	"DiTing-Go/pkg/utils"
 	"DiTing-Go/utils/jsonUtils"
 	"DiTing-Go/utils/redisCache"
@@ -25,18 +25,20 @@ import (
 )
 
 // ApplyFriendService 添加好友
-func ApplyFriendService(uid int64, applyReq req.UserApplyReq) (resp.ResponseData, error) {
+func ApplyFriendService(uid int64, friendUid int64, msg string) (pkgResp.ResponseData, error) {
 	ctx := context.Background()
-	friendUid := applyReq.Uid
 	user := global.Query.User
 	userQ := user.WithContext(ctx)
 
 	uids := utils.Int64Slice{uid, friendUid}
+	// 保证uid小的在前
 	sort.Sort(uids)
-	key := fmt.Sprintf(domainEnum.UserAndFriendLock, uids[0], uids[1])
+	key := fmt.Sprintf(enum.UserAndFriendLock, uids[0], uids[1])
+
+	// 保证双方不能同时操作
 	mutex, err := utils.GetLock(key)
 	if err != nil {
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), err
+		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), err
 	}
 	defer utils.ReleaseLock(mutex)
 
@@ -45,26 +47,27 @@ func ApplyFriendService(uid int64, applyReq req.UserApplyReq) (resp.ResponseData
 		return userQ.Where(user.ID.Eq(friendUid)).First()
 	}
 	userR := model.User{}
-	key = fmt.Sprintf(domainEnum.UserCacheByID, applyReq.Uid)
+	key = fmt.Sprintf(enum.UserCacheByID, friendUid)
 	err = utils.GetData(key, &userR, fun)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return resp.ErrorResponseData("用户不存在"), errors.New("Business Error")
+			return pkgResp.ErrorResponseData("用户不存在"), errors.New("Business Error")
 		}
 		global.Logger.Errorf("查询用户失败 %s", err)
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 	}
 
 	// 检查是否已经是好友关系
 	isFriend, err := IsFriend(uid, friendUid)
 	if err != nil {
 		global.Logger.Errorf("查询好友失败 %s", err)
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 	}
 	// 已经是好友
 	if isFriend {
-		return resp.ErrorResponseData("已经是好友"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("已经是好友"), errors.New("Business Error")
 	}
+
 	// 检查是否已经发送过好友请求
 	userApply := global.Query.UserApply
 	userApplyQ := userApply.WithContext(ctx)
@@ -72,73 +75,74 @@ func ApplyFriendService(uid int64, applyReq req.UserApplyReq) (resp.ResponseData
 	fun = func() (interface{}, error) {
 		return userApplyQ.Where(userApply.UID.Eq(uid), userApply.TargetID.Eq(friendUid)).First()
 	}
-	key = fmt.Sprintf(domainEnum.UserApplyCacheByUidAndFriendUid, uid, friendUid)
+	key = fmt.Sprintf(enum.UserApplyCacheByUidAndFriendUid, uid, friendUid)
 	err = utils.GetData(key, &userApplyR, fun)
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			global.Logger.Errorf("查询好友请求失败 %s", err)
+			return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+		}
+	}
 	// 查到了
 	if err == nil {
-		return resp.ErrorResponseData("已发送过好友请求，请等待对方同意"), errors.New("Business Error")
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		global.Logger.Errorf("查询好友请求失败 %s", err)
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("已发送过好友请求，请等待对方同意"), errors.New("Business Error")
 	}
 
 	// 检查对方是否给我们发送过好友请求，如果是，直接同意
 	fun = func() (interface{}, error) {
 		return userApplyQ.Where(userApply.UID.Eq(friendUid), userApply.TargetID.Eq(uid)).First()
 	}
-	key = fmt.Sprintf(domainEnum.UserApplyCacheByUidAndFriendUid, friendUid, uid)
+	key = fmt.Sprintf(enum.UserApplyCacheByUidAndFriendUid, friendUid, uid)
 	err = utils.GetData(key, &userApplyR, fun)
 	// 查到了
 	if err == nil {
 		err := AgreeFriend(uid, friendUid)
 		if err != nil {
 			global.Logger.Errorf("同意好友请求失败 %s", err)
-			return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+			return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 		}
-
-		return resp.SuccessResponseData(nil), nil
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		global.Logger.Errorf("查询好友请求失败 %s", err)
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+		return pkgResp.SuccessResponseData(nil), nil
+	} else {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			global.Logger.Errorf("查询好友请求失败 %s", err)
+			return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+		}
 	}
 
 	// 发送好友请求
 	err = userApplyQ.Create(&model.UserApply{
 		UID:        uid,
 		TargetID:   friendUid,
-		Msg:        applyReq.Msg,
-		Status:     enum.NO,
-		ReadStatus: enum.NO,
+		Msg:        msg,
+		Status:     pkgEnum.NO,
+		ReadStatus: pkgEnum.NO,
 	})
 	if err != nil {
 		global.Logger.Errorf("插入好友请求失败 %s", err)
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 	}
 	// 发送好友申请事件
-	err = jsonUtils.SendMsgSync(domainEnum.FriendApplyTopic, model.UserApply{
+	err = jsonUtils.SendMsgSync(enum.FriendApplyTopic, model.UserApply{
 		UID:        uid,
 		TargetID:   friendUid,
-		Msg:        applyReq.Msg,
-		Status:     enum.NO,
-		ReadStatus: enum.NO,
+		Msg:        msg,
+		Status:     pkgEnum.NO,
+		ReadStatus: pkgEnum.NO,
 	})
 	if err != nil {
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 	}
-	//time.Sleep(30 * time.Second)
-	return resp.SuccessResponseData(nil), nil
+	return pkgResp.SuccessResponseData(nil), nil
 }
 
 // IsFriendService 判断是否是好友
-func IsFriendService(uid, friendUid int64) (resp.ResponseData, error) {
+func IsFriendService(uid, friendUid int64) (pkgResp.ResponseData, error) {
 	isFriend, err := IsFriend(uid, friendUid)
 	if err != nil {
 		global.Logger.Errorf("判断好友关系失败 %s", err)
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 	}
-	return resp.SuccessResponseData(isFriend), nil
+	return pkgResp.SuccessResponseData(isFriend), nil
 }
 
 // IsFriend 判断是否是好友
@@ -149,9 +153,9 @@ func IsFriend(uid, friendUid int64) (bool, error) {
 	// 检查是否已经是好友关系
 	userFriendR := model.UserFriend{}
 	fun := func() (interface{}, error) {
-		return userFriendQ.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(friendUid), userFriend.DeleteStatus.Eq(enum.NORMAL)).First()
+		return userFriendQ.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(friendUid), userFriend.DeleteStatus.Eq(pkgEnum.NORMAL)).First()
 	}
-	key := fmt.Sprintf(domainEnum.UserFriendCacheByUidAndFriendUid, uid, friendUid)
+	key := fmt.Sprintf(enum.UserFriendCacheByUidAndFriendUid, uid, friendUid)
 	err := utils.GetData(key, &userFriendR, fun)
 	if err != nil {
 		// 没查到，不是好友
@@ -165,23 +169,24 @@ func IsFriend(uid, friendUid int64) (bool, error) {
 	return true, nil
 }
 
-func AgreeFriendService(uid, friendUid int64) (resp.ResponseData, error) {
+// AgreeFriendService 同意好友申请
+func AgreeFriendService(uid, friendUid int64) (pkgResp.ResponseData, error) {
 
 	uids := utils.Int64Slice{uid, friendUid}
 	sort.Sort(uids)
-	key := fmt.Sprintf(domainEnum.UserAndFriendLock, uids[0], uids[1])
+	key := fmt.Sprintf(enum.UserAndFriendLock, uids[0], uids[1])
 	mutex, err := utils.GetLock(key)
 	if err != nil {
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), err
+		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), err
 	}
 	defer utils.ReleaseLock(mutex)
 
 	err = AgreeFriend(uid, friendUid)
 	if err != nil {
 		global.Logger.Errorf("同意好友请求失败 %s", err)
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 	}
-	return resp.SuccessResponseData(nil), nil
+	return pkgResp.SuccessResponseData(nil), nil
 }
 
 // AgreeFriend 同意好友请求
@@ -195,17 +200,17 @@ func AgreeFriend(uid, friendUid int64) error {
 		return userApplyQ.Where(userApply.UID.Eq(friendUid), userApply.TargetID.Eq(uid)).First()
 	}
 	userApplyR := model.UserApply{}
-	key := fmt.Sprintf(domainEnum.UserApplyCacheByUidAndFriendUid, friendUid, uid)
+	key := fmt.Sprintf(enum.UserApplyCacheByUidAndFriendUid, friendUid, uid)
 	err := utils.GetData(key, &userApplyR, fun)
 	if err != nil {
 		return err
 	}
 	// 好友申请状态不是待审批
-	if userApplyR.Status != enum.NO {
+	if userApplyR.Status != pkgEnum.Wait {
 		return errors.New("error status")
 	}
 	// 同意好友请求
-	userApplyR.Status = enum.YES
+	userApplyR.Status = pkgEnum.Agree
 	// 事务
 	tx := global.Query.Begin()
 	userApplyTx := tx.UserApply.WithContext(context.Background())
@@ -222,21 +227,22 @@ func AgreeFriend(uid, friendUid int64) error {
 		{
 			UID:          uid,
 			FriendUID:    friendUid,
-			DeleteStatus: enum.NORMAL,
+			DeleteStatus: pkgEnum.NORMAL,
 		},
 		{
 			UID:          friendUid,
 			FriendUID:    uid,
-			DeleteStatus: enum.NORMAL,
+			DeleteStatus: pkgEnum.NORMAL,
 		},
 	}
+
 	// 检查是否存在软删除状态的好友关系
 	userFriend := global.Query.UserFriend
 	fun = func() (interface{}, error) {
-		return userFriendTx.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(friendUid), userFriend.DeleteStatus.Eq(enum.DELETED)).First()
+		return userFriendTx.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(friendUid), userFriend.DeleteStatus.Eq(pkgEnum.DELETED)).First()
 	}
 	userFriendR := model.UserFriend{}
-	key = fmt.Sprintf(domainEnum.UserFriendCacheByUidAndFriendUid, uid, friendUid)
+	key = fmt.Sprintf(enum.UserFriendCacheByUidAndFriendUid, uid, friendUid)
 	err = utils.GetData(key, &userFriendR, fun)
 	// err
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -245,8 +251,8 @@ func AgreeFriend(uid, friendUid int64) error {
 	}
 	// 查到了,更新状态
 	if err == nil {
-		_, err := userFriendTx.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(friendUid)).Update(userFriend.DeleteStatus, enum.NORMAL)
-		_, err = userFriendTx.Where(userFriend.UID.Eq(friendUid), userFriend.FriendUID.Eq(uid)).Update(userFriend.DeleteStatus, enum.NORMAL)
+		_, err := userFriendTx.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(friendUid)).Update(userFriend.DeleteStatus, pkgEnum.NORMAL)
+		_, err = userFriendTx.Where(userFriend.UID.Eq(friendUid), userFriend.FriendUID.Eq(uid)).Update(userFriend.DeleteStatus, pkgEnum.NORMAL)
 		if err != nil {
 			if err := tx.Rollback(); err != nil {
 				global.Logger.Errorf("事务回滚失败 %s", err.Error())
@@ -255,9 +261,9 @@ func AgreeFriend(uid, friendUid int64) error {
 			return err
 		}
 		// 删除redis缓存
-		key = fmt.Sprintf(domainEnum.UserFriendCacheByUidAndFriendUid, uid, friendUid)
+		key = fmt.Sprintf(enum.UserFriendCacheByUidAndFriendUid, uid, friendUid)
 		defer utils.RemoveData(key)
-		key = fmt.Sprintf(domainEnum.UserFriendCacheByUidAndFriendUid, friendUid, uid)
+		key = fmt.Sprintf(enum.UserFriendCacheByUidAndFriendUid, friendUid, uid)
 		defer utils.RemoveData(key)
 	} else {
 		// 没查到，创建新的好友关系
@@ -273,7 +279,7 @@ func AgreeFriend(uid, friendUid int64) error {
 	}
 
 	// 发送新好友事件
-	err = jsonUtils.SendMsgSync(domainEnum.NewFriendTopic, userFriends[0])
+	err = jsonUtils.SendMsgSync(enum.NewFriendTopic, userFriends[0])
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
@@ -284,19 +290,20 @@ func AgreeFriend(uid, friendUid int64) error {
 	return nil
 }
 
+// TODO:
 // DeleteFriendService 删除好友
 // 只删除好友关系和会话,其他耗时操作异步处理
-func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (resp.ResponseData, error) {
+func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (pkgResp.ResponseData, error) {
 	ctx := context.Background()
 
 	deleteFriendUid := deleteFriendReq.Uid
 
 	uids := utils.Int64Slice{uid, deleteFriendUid}
 	sort.Sort(uids)
-	key := fmt.Sprintf(domainEnum.UserAndFriendLock, uids[0], uids[1])
+	key := fmt.Sprintf(enum.UserAndFriendLock, uids[0], uids[1])
 	mutex, err := utils.GetLock(key)
 	if err != nil {
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), err
+		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), err
 	}
 	defer utils.ReleaseLock(mutex)
 
@@ -304,10 +311,10 @@ func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (resp.R
 	isFriend, err := IsFriend(uid, deleteFriendUid)
 	if err != nil {
 		global.Logger.Errorf("查询好友关系失败 %s", err)
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 	}
 	if !isFriend {
-		return resp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
 	}
 
 	tx := global.Query.Begin()
@@ -315,22 +322,22 @@ func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (resp.R
 	// 软删除好友关系
 	userFriend := global.Query.UserFriend
 	userFriendTx := tx.UserFriend.WithContext(ctx)
-	if _, err := userFriendTx.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(deleteFriendUid)).Update(userFriend.DeleteStatus, enum.DELETED); err != nil {
+	if _, err := userFriendTx.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(deleteFriendUid)).Update(userFriend.DeleteStatus, pkgEnum.DELETED); err != nil {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 		}
 		global.Logger.Errorf("删除好友失败 %s", err.Error())
-		return resp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
 	}
 	// 删除redis缓存
 	defer redisCache.RemoveUserFriend(uid, deleteFriendUid)
 
-	if _, err := userFriendTx.Where(userFriend.UID.Eq(deleteFriendUid), userFriend.FriendUID.Eq(uid)).Update(userFriend.DeleteStatus, enum.DELETED); err != nil {
+	if _, err := userFriendTx.Where(userFriend.UID.Eq(deleteFriendUid), userFriend.FriendUID.Eq(uid)).Update(userFriend.DeleteStatus, pkgEnum.DELETED); err != nil {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 		}
 		global.Logger.Errorf("删除好友失败 %s", err.Error())
-		return resp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
 	}
 	// 删除redis缓存
 	defer redisCache.RemoveUserFriend(deleteFriendUid, uid)
@@ -344,13 +351,13 @@ func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (resp.R
 		return roomFriendTx.Where(roomFriend.Uid1.Eq(uids[0]), roomFriend.Uid2.Eq(uids[1])).First()
 	}
 	roomFriendR := model.RoomFriend{}
-	key = fmt.Sprintf(domainEnum.RoomFriendCacheByUidAndFriendUid, uids[0], uids[1])
+	key = fmt.Sprintf(enum.RoomFriendCacheByUidAndFriendUid, uids[0], uids[1])
 	if err := utils.GetData(key, &roomFriendR, fun); err != nil {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 		}
 		global.Logger.Errorf("查询好友房间失败 %s", err.Error())
-		return resp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
 	}
 
 	contact := global.Query.Contact
@@ -361,14 +368,14 @@ func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (resp.R
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 		}
 		global.Logger.Errorf("删除会话失败 %s", err.Error())
-		return resp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
 	}
 	if resultInfo.RowsAffected == 0 {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 		}
 		global.Logger.Errorf("会话不存在 %d", roomFriendR.RoomID)
-		return resp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
 	}
 	// TODO:删除缓存
 
@@ -377,31 +384,31 @@ func DeleteFriendService(uid int64, deleteFriendReq req.DeleteFriendReq) (resp.R
 		Uid:       uid,
 		FriendUid: deleteFriendUid,
 	}
-	err = jsonUtils.SendMsgSync(domainEnum.DeleteFriendTopic, DeleteFriendDto)
+	err = jsonUtils.SendMsgSync(enum.DeleteFriendTopic, DeleteFriendDto)
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 		}
 		global.Logger.Errorf("发送删除好友事件失败 %s", err.Error())
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 	}
 
 	if err := tx.Commit(); err != nil {
 		global.Logger.Errorf("事务提交失败 %s", err.Error())
-		return resp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("删除好友失败"), errors.New("Business Error")
 	}
 
-	return resp.SuccessResponseData(nil), nil
+	return pkgResp.SuccessResponseData(nil), nil
 }
 
 // GetUserApplyService 获取好友申请列表
-func GetUserApplyService(uid int64, pageReq pkgReq.PageReq) (resp.ResponseData, error) {
+func GetUserApplyService(uid int64, pageReq pkgReq.PageReq) (pkgResp.ResponseData, error) {
 	if pageReq.Cursor != nil && *pageReq.Cursor != "" {
 		// 时间戳转时间
 		timestamp, err := strconv.ParseInt(*pageReq.Cursor, 10, 64)
 		if err != nil {
 			global.Logger.Errorf("时间戳转换失败 %s", err)
-			return resp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+			return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 		}
 		cursor := time.Unix(0, timestamp)
 		cursorStr := cursor.Format(time.RFC3339Nano)
@@ -417,7 +424,7 @@ func GetUserApplyService(uid int64, pageReq pkgReq.PageReq) (resp.ResponseData, 
 	pageResp, err := utils.Paginate(db, pageReq, &userApplys, "create_time", false, condition...)
 	if err != nil {
 		global.Logger.Errorf("查询好友申请表失败 %s", err)
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 	}
 
 	uids := make([]int64, 0)
@@ -431,17 +438,17 @@ func GetUserApplyService(uid int64, pageReq pkgReq.PageReq) (resp.ResponseData, 
 	users, err := user.WithContext(ctx).Select(user.ID, user.Name, user.Avatar).Where(user.ID.In(uids...)).Find()
 	if err != nil {
 		global.Logger.Errorf("查询用户表失败 %s", err)
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 	}
 
 	if len(users) != len(userApplys) {
 		global.Logger.Errorf("用户表和好友申请表数据不匹配")
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 	}
-	var usersVO = make([]domainResp.UserApplyResp, 0)
+	var usersVO = make([]resp.UserApplyResp, 0)
 	// 数据转换
 	for i := 0; i < len(users); i++ {
-		var userVO domainResp.UserApplyResp
+		var userVO resp.UserApplyResp
 		userVO.ApplyId = userApplys[i].ID
 		userVO.Uid = userApplys[i].UID
 		userVO.Msg = userApplys[i].Msg
@@ -453,39 +460,39 @@ func GetUserApplyService(uid int64, pageReq pkgReq.PageReq) (resp.ResponseData, 
 	userApply := global.Query.UserApply
 	userApplyQ := global.Query.UserApply.WithContext(ctx)
 	// 更新已读状态
-	_, err = userApplyQ.Where(userApply.TargetID.Eq(uid), userApply.ReadStatus.Eq(enum.NO)).Update(userApply.ReadStatus, enum.YES)
+	_, err = userApplyQ.Where(userApply.TargetID.Eq(uid), userApply.ReadStatus.Eq(pkgEnum.NO)).Update(userApply.ReadStatus, pkgEnum.YES)
 	if err != nil {
 		global.Logger.Errorf("更新好友申请表失败 %s", err)
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 	}
 
-	return resp.SuccessResponseData(pageResp), nil
+	return pkgResp.SuccessResponseData(pageResp), nil
 }
 
-func UnreadApplyNumService(uid int64) (resp.ResponseData, error) {
+func UnreadApplyNumService(uid int64) (pkgResp.ResponseData, error) {
 	ctx := context.Background()
 	userApply := global.Query.UserApply
 	userApplyQ := userApply.WithContext(ctx)
 
 	// TODO 直接count
 	// 获取 UserApply 表中 TargetID 等于 uid(登录用户ID)的用户ID集合
-	subQuery := userApplyQ.Where(userApply.TargetID.Eq(uid), userApply.ReadStatus.Eq(enum.NO)).Limit(99)
+	subQuery := userApplyQ.Where(userApply.TargetID.Eq(uid), userApply.ReadStatus.Eq(pkgEnum.NO)).Limit(99)
 	num, err := gen.Table(subQuery.As("t")).Count()
 	if err != nil {
 		global.Logger.Errorf("查询好友申请表失败 %s", err)
-		return resp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
 	}
-	return resp.SuccessResponseData(num), nil
+	return pkgResp.SuccessResponseData(num), nil
 }
 
 // GetFriendListService 获取好友列表
-func GetFriendListService(uid int64, pageReq pkgReq.PageReq) (resp.ResponseData, error) {
+func GetFriendListService(uid int64, pageReq pkgReq.PageReq) (pkgResp.ResponseData, error) {
 	if pageReq.Cursor != nil && *pageReq.Cursor != "" {
 		// 时间戳转时间
 		timestamp, err := strconv.ParseInt(*pageReq.Cursor, 10, 64)
 		if err != nil {
 			global.Logger.Errorf("时间戳转换失败 %s", err)
-			return resp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+			return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 		}
 		cursor := time.Unix(0, timestamp)
 		cursorStr := cursor.Format(time.RFC3339Nano)
@@ -496,11 +503,11 @@ func GetFriendListService(uid int64, pageReq pkgReq.PageReq) (resp.ResponseData,
 	// 获取 UserFriend 表中 uid = uid 的好友的uid组成的集合
 	db := dal.DB
 	userFriend := make([]model.UserFriend, 0)
-	condition := []interface{}{"uid=? and delete_status=?", strconv.FormatInt(uid, 10), enum.NORMAL}
+	condition := []interface{}{"uid=? and delete_status=?", strconv.FormatInt(uid, 10), pkgEnum.NORMAL}
 	pageResp, err := utils.Paginate(db, pageReq, &userFriend, "create_time", false, condition...)
 	if err != nil {
 		global.Logger.Errorf("分页查询失败 %v", err)
-		return resp.ErrorResponseData("系统繁忙，请稍后再试"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试"), errors.New("Business Error")
 	}
 	uids := make([]int64, 0)
 
@@ -514,13 +521,13 @@ func GetFriendListService(uid int64, pageReq pkgReq.PageReq) (resp.ResponseData,
 	friendList, err := users.WithContext(ctx).Select(users.ID, users.ActiveStatus, users.LastOptTime).Where(users.ID.In(uids...)).Find()
 	if err != nil {
 		global.Logger.Errorf("查询用户表失败 %s", err)
-		return resp.ErrorResponseData("系统繁忙，请稍后再试"), errors.New("Business Error")
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试"), errors.New("Business Error")
 	}
 
 	// 数据转换
-	friendListVO := make([]domainResp.UserContactResp, 0)
+	friendListVO := make([]resp.UserContactResp, 0)
 	for _, friend := range friendList {
-		friendResp := domainResp.UserContactResp{
+		friendResp := resp.UserContactResp{
 			Uid:          friend.ID,
 			LastOptTime:  friend.LastOptTime.UnixMilli(),
 			ActiveStatus: int(friend.ActiveStatus),
@@ -528,5 +535,5 @@ func GetFriendListService(uid int64, pageReq pkgReq.PageReq) (resp.ResponseData,
 		friendListVO = append(friendListVO, friendResp)
 	}
 	pageResp.Data = friendListVO
-	return resp.SuccessResponseData(pageResp), nil
+	return pkgResp.SuccessResponseData(pageResp), nil
 }

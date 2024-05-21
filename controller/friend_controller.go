@@ -25,7 +25,7 @@ func ApplyFriendController(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	response, err := service.ApplyFriendService(uid, applyReq)
+	response, err := service.ApplyFriendService(uid, applyReq.Uid, applyReq.Msg)
 	if err != nil {
 		c.Abort()
 		resp.ReturnErrorResponse(c, response)
