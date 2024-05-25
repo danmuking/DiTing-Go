@@ -84,14 +84,16 @@ func AgreeFriendController(c *gin.Context) {
 	resp.ReturnSuccessResponse(c, response)
 }
 
-// GetUserApplyController 同意好友申请
+// GetUserApplyController 获取好友申请列表
 //
-//	@Summary	同意好友申请
-//	@Produce	json
-//	@Param		uid	body		int					true	"好友uid"
-//	@Success	200	{object}	resp.ResponseData	"成功"
-//	@Failure	500	{object}	resp.ResponseData	"内部错误"
-//	@Router		/api/user/getApplyList [get]
+//		@Summary	获取好友申请列表
+//		@Produce	json
+//	 	@Param Authorization header string false "Bearer 用户令牌"
+//		@Param cursor query int false "游标"
+//		@Param pageSize query int false "页面大小"
+//		@Success	200	{object}	resp.ResponseData	"成功"
+//		@Failure	500	{object}	resp.ResponseData	"内部错误"
+//		@Router		/api/user/getApplyList [get]
 func GetUserApplyController(c *gin.Context) {
 	uid := c.GetInt64("uid")
 	pageRequest := pkgReq.PageReq{}
@@ -113,7 +115,7 @@ func GetUserApplyController(c *gin.Context) {
 //
 //	@Summary	是否为好友关系
 //	@Produce	json
-//	@Param		uid	body		int					true	"好友uid"
+//	@Param		friendUid	path		int					true	"好友uid"
 //	@Success	200	{object}	resp.ResponseData	"成功"
 //	@Failure	500	{object}	resp.ResponseData	"内部错误"
 //	@Router		/api/user/isFriend/:friendUid [get]
@@ -151,6 +153,12 @@ func UnreadApplyNumController(c *gin.Context) {
 	resp.ReturnSuccessResponse(c, response)
 }
 
+// GetFriendListController 好友列表
+//
+//	@Summary	好友列表
+//	@Success	200			{object}	resp.ResponseData	"成功"
+//	@Failure	500			{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/user/getFriendList [get]
 func GetFriendListController(c *gin.Context) {
 	uid := c.GetInt64("uid")
 	pageRequest := pkgReq.PageReq{}
@@ -168,6 +176,12 @@ func GetFriendListController(c *gin.Context) {
 }
 
 // GetUserInfoByNameController 根据好友昵称搜索好友
+//
+//	@Summary	根据好友昵称搜索好友
+//	@Param		name	query		string	true	"好友昵称"
+//	@Success	200			{object}	resp.ResponseData	"成功"
+//	@Failure	500			{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/user/getUserInfoByName [get]
 func GetUserInfoByNameController(c *gin.Context) {
 	uid := c.GetInt64("uid")
 	getUserInfoByNameReq := req.GetUserInfoByNameReq{}
