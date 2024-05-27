@@ -22,6 +22,7 @@ import (
 	"time"
 )
 
+// CreateGroupService 创建群聊
 func CreateGroupService(uid int64, uidList []int64) (pkgResp.ResponseData, error) {
 
 	tx := global.Query.Begin()
@@ -29,8 +30,9 @@ func CreateGroupService(uid int64, uidList []int64) (pkgResp.ResponseData, error
 	// 创建房间表
 	roomTx := tx.Room.WithContext(ctx)
 	newRoom := model.Room{
-		Type:    enum.GROUP,
-		ExtJSON: "{}",
+		Type:         enum.GROUP,
+		DeleteStatus: pkgEnum.NORMAL,
+		ExtJSON:      "{}",
 	}
 	if err := roomTx.Create(&newRoom); err != nil {
 		if err := tx.Rollback(); err != nil {
@@ -43,7 +45,12 @@ func CreateGroupService(uid int64, uidList []int64) (pkgResp.ResponseData, error
 	// 查询用户头像
 	user := global.Query.User
 	userTx := tx.User.WithContext(ctx)
-	userR, err := userTx.Where(user.ID.Eq(uid)).First()
+	fun := func() (interface{}, error) {
+		return userTx.Where(user.ID.Eq(uid)).First()
+	}
+	userR := model.User{}
+	key := fmt.Sprintf(enum.UserCacheByID, uid)
+	err := utils.GetData(key, &userR, fun)
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
@@ -52,11 +59,12 @@ func CreateGroupService(uid int64, uidList []int64) (pkgResp.ResponseData, error
 		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 
+	// 组装群聊名
 	uidList = append([]int64{uid}, uidList...)
 	userRList, err := userTx.Where(user.ID.In(uidList...)).Find()
 	groupName := ""
 	for _, user := range userRList {
-		groupName += (user.Name + "、")
+		groupName += user.Name + "、"
 	}
 	groupName = strings.TrimRight(groupName, "、")
 	runes := []rune(groupName)
@@ -71,8 +79,9 @@ func CreateGroupService(uid int64, uidList []int64) (pkgResp.ResponseData, error
 		RoomID: newRoom.ID,
 		Name:   groupName,
 		// 默认为创建者头像
-		Avatar:  userR.Avatar,
-		ExtJSON: "{}",
+		Avatar:       userR.Avatar,
+		DeleteStatus: pkgEnum.NORMAL,
+		ExtJSON:      "{}",
 	}
 	if err := roomGroupTx.Create(&newRoomGroup); err != nil {
 		if err := tx.Rollback(); err != nil {
@@ -87,16 +96,14 @@ func CreateGroupService(uid int64, uidList []int64) (pkgResp.ResponseData, error
 		{
 			UID:     uid,
 			GroupID: newRoomGroup.ID,
-			// TODO: 1为群主,抽取为常量
-			Role: 1,
+			Role:    enum.SuperAdmin,
 		},
 	}
-	for _, userInfo := range userRList {
+	for _, userInfo := range userRList[1:] {
 		newGroupMemberList = append(newGroupMemberList, &model.GroupMember{
 			UID:     userInfo.ID,
 			GroupID: newRoomGroup.ID,
-			// TODO: 1为群主,抽取为常量
-			Role: 2,
+			Role:    enum.Member,
 		})
 	}
 	if err := groupMemberTx.Create(newGroupMemberList...); err != nil {
@@ -106,6 +113,26 @@ func CreateGroupService(uid int64, uidList []int64) (pkgResp.ResponseData, error
 		global.Logger.Errorf("添加群组成员表失败 %s", err.Error())
 		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
+
+	// 为每个人创建会话表
+	contactTx := tx.Contact.WithContext(ctx)
+	var newContactList []*model.Contact
+	for _, userInfo := range userRList {
+		newContactList = append(newContactList, &model.Contact{
+			UID:        userInfo.ID,
+			RoomID:     newRoom.ID,
+			ReadTime:   time.Now(),
+			ActiveTime: time.Now(),
+		})
+	}
+	if err := contactTx.Create(newContactList...); err != nil {
+		if err := tx.Rollback(); err != nil {
+			global.Logger.Errorf("事务回滚失败 %s", err.Error())
+		}
+		global.Logger.Errorf("添加会话表失败 %s", err.Error())
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
 	// 自动发送一条消息
 	messageTx := tx.Message.WithContext(ctx)
 	newMessage := model.Message{
@@ -124,29 +151,17 @@ func CreateGroupService(uid int64, uidList []int64) (pkgResp.ResponseData, error
 		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 
-	// 创建会话表
-	contactTx := tx.Contact.WithContext(ctx)
-	newContact := model.Contact{
-		UID:        uid,
-		RoomID:     newRoom.ID,
-		ReadTime:   time.Now(),
-		ActiveTime: time.Now(),
-		LastMsgID:  newMessage.ID,
-	}
-	if err := contactTx.Create(&newContact); err != nil {
-		if err := tx.Rollback(); err != nil {
-			global.Logger.Errorf("事务回滚失败 %s", err.Error())
-		}
-		global.Logger.Errorf("添加会话表失败 %s", err.Error())
-		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
-	}
-
+	// 提交事务
 	if err := tx.Commit(); err != nil {
 		global.Logger.Errorf("事务提交失败 %s", err.Error())
 		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 
-	global.Bus.Publish(enum.NewMessageEvent, newMessage)
+	// 发送新消息事件
+	err = jsonUtils.SendMsgSync(enum.NewMessageTopic, newMessage)
+	if err != nil {
+		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+	}
 
 	return pkgResp.SuccessResponseData("success"), nil
 }

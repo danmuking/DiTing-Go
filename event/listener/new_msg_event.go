@@ -2,7 +2,7 @@ package listener
 
 import (
 	"DiTing-Go/dal/model"
-	query "DiTing-Go/dal/query"
+	"DiTing-Go/dal/query"
 	"DiTing-Go/domain/enum"
 	"DiTing-Go/global"
 	"DiTing-Go/pkg/utils"
