@@ -71,7 +71,7 @@ func initGin() {
 	{
 		//创建群聊
 		apiGroup.POST("/create", controller.CreateGroupController)
-		apiGroup.DELETE("/:id", service.DeleteGroupService)
+		apiGroup.DELETE("/delete/", controller.DeleteGroupController)
 		apiGroup.POST("/join", service.JoinGroupService)
 		apiGroup.POST("/quit", service.QuitGroupService)
 		apiGroup.GET("/getGroupMemberList", service.GetGroupMemberListService)

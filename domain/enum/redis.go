@@ -3,14 +3,16 @@ package enum
 import "time"
 
 const (
-	CacheTime  = 7 * 24 * time.Hour
-	Project    = "diting:"
-	User       = Project + "user:"
-	UserFriend = Project + "userFriend:"
-	UserApply  = Project + "userApply:"
-	RoomFriend = Project + "roomFriend:"
-	Contact    = Project + "contact:"
-	Room       = Project + "room:"
+	CacheTime   = 7 * 24 * time.Hour
+	Project     = "diting:"
+	User        = Project + "user:"
+	UserFriend  = Project + "userFriend:"
+	UserApply   = Project + "userApply:"
+	RoomFriend  = Project + "roomFriend:"
+	RoomGroup   = Project + "roomGroup:"
+	Contact     = Project + "contact:"
+	Room        = Project + "room:"
+	GroupMember = Project + "groupMember:"
 )
 const (
 	// 房间缓存
@@ -19,6 +21,12 @@ const (
 	// 好友房间缓存
 	RoomFriendCacheByRoomID          = RoomFriend + "%d"
 	RoomFriendCacheByUidAndFriendUid = RoomFriend + "%d_%d"
+
+	//群聊房间缓存
+	RoomGroupCacheByRoomID = RoomGroup + "%d"
+
+	//群成员缓存
+	GroupMemberCacheByGroupIdAndUid = GroupMember + "%d_%d"
 
 	// 用户缓存
 	UserCacheByID   = User + "%d"

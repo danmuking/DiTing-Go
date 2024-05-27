@@ -1,5 +1,5 @@
 package req
 
 type DeleteGroupReq struct {
-	ID int64 `uri:"id" binding:"required"`
+	RoomId int64 `json:"roomId" binding:"required"`
 }

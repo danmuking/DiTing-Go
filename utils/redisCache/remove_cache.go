@@ -18,6 +18,12 @@ func RemoveRoomFriend(roomFriend model.RoomFriend) {
 	utils.RemoveData(fmt.Sprintf(enum.RoomFriendCacheByUidAndFriendUid, roomFriend.Uid1, roomFriend.Uid2))
 }
 
+// RemoveRoomGroup 移除群聊房间缓存
+func RemoveRoomGroup(roomGroup model.RoomGroup) {
+	utils.RemoveData(fmt.Sprintf(enum.RoomGroupCacheByRoomID, roomGroup.RoomID))
+
+}
+
 // RemoveUserCache 移除用户缓存
 func RemoveUserCache(user model.User) {
 	utils.RemoveData(fmt.Sprintf(enum.UserCacheByID, user.ID))

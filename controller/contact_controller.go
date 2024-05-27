@@ -110,3 +110,29 @@ func CreateGroupController(c *gin.Context) {
 	}
 	resp.ReturnSuccessResponse(c, response)
 }
+
+// DeleteGroupController 解散群聊
+//
+//	@Summary	解散群聊
+//	@Produce	json
+//	@Param		roomId		body		int				true	"房间id"
+//	@Success	200			{object}	resp.ResponseData	"成功"
+//	@Failure	500			{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/group/delete/ [post]
+func DeleteGroupController(c *gin.Context) {
+	uid := c.GetInt64("uid")
+	deleteGroupReq := req.DeleteGroupReq{}
+	if err := c.ShouldBind(&deleteGroupReq); err != nil { //ShouldBind()会自动推导
+		resp.ErrorResponse(c, "参数错误")
+		global.Logger.Errorf("参数错误: %v", err)
+		c.Abort()
+		return
+	}
+	response, err := service.DeleteGroupService(uid, deleteGroupReq.RoomId)
+	if err != nil {
+		c.Abort()
+		resp.ReturnErrorResponse(c, response)
+		return
+	}
+	resp.ReturnSuccessResponse(c, response)
+}
