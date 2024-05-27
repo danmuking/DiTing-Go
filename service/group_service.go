@@ -167,9 +167,6 @@ func DeleteGroupService(c *gin.Context) {
 	}
 
 	tx := global.Query.Begin()
-	defer func() {
-
-	}()
 	ctx := context.Background()
 	// 查询群聊id
 	roomGroup := global.Query.RoomGroup

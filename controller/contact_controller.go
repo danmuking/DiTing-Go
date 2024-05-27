@@ -85,6 +85,14 @@ func GetNewMsgListController(c *gin.Context) {
 	resp.ReturnSuccessResponse(c, response)
 }
 
+// CreateGroupController 创建群聊
+//
+//	@Summary	创建群聊
+//	@Produce	json
+//	@Param		uidList		body		array				true	"用户id列表"
+//	@Success	200			{object}	resp.ResponseData	"成功"
+//	@Failure	500			{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/group/create [post]
 func CreateGroupController(c *gin.Context) {
 	uid := c.GetInt64("uid")
 	creatGroupReq := req.CreateGroupReq{}
