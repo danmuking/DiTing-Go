@@ -333,6 +333,12 @@ func JoinGroupService(uid int64, roomId int64) (pkgResp.ResponseData, error) {
 		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 
+	// 提交事务
+	if err := tx.Commit(); err != nil {
+		global.Logger.Errorf("事务提交失败 %s", err.Error())
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
 	// 自动发送一条消息
 	messageTx := tx.Message.WithContext(ctx)
 	newMessage := model.Message{
@@ -347,12 +353,6 @@ func JoinGroupService(uid int64, roomId int64) (pkgResp.ResponseData, error) {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
 		}
 		global.Logger.Errorf("添加消息表失败 %s", err.Error())
-		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
-	}
-
-	// 提交事务
-	if err := tx.Commit(); err != nil {
-		global.Logger.Errorf("事务提交失败 %s", err.Error())
 		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 
