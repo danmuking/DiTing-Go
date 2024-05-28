@@ -284,7 +284,7 @@ func JoinGroupService(uid int64, roomId int64) (pkgResp.ResponseData, error) {
 	}
 	roomGroupR := model.RoomGroup{}
 	key = fmt.Sprintf(enum.RoomGroupCacheByRoomID, roomId)
-	err = utils.GetData(key, &roomR, fun)
+	err = utils.GetData(key, &roomGroupR, fun)
 	if err != nil {
 		global.Logger.Errorf("查询群聊失败 %s", err)
 		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
