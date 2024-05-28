@@ -1,5 +1,5 @@
 package req
 
 type JoinGroupReq struct {
-	ID int64 `json:"id" binding:"required"`
+	RoomId int64 `json:"roomId" binding:"required"`
 }

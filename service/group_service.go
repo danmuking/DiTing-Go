@@ -251,80 +251,75 @@ func DeleteGroupService(uid int64, roomId int64) (pkgResp.ResponseData, error) {
 //	@Param		id	body		int					true	"房间id"
 //	@Success	200	{object}	resp.ResponseData	"成功"
 //	@Failure	500	{object}	resp.ResponseData	"内部错误"
-//	@Router		/api/group/create [post]
-func JoinGroupService(c *gin.Context) {
-	uid := c.GetInt64("uid")
-	joinGroupReq := req.JoinGroupReq{}
-	if err := c.ShouldBind(&joinGroupReq); err != nil { //ShouldBind()会自动推导
-		resp.ErrorResponse(c, "参数错误")
-		global.Logger.Errorf("参数错误: %v", err)
-		c.Abort()
-		return
-	}
+//	@Router		/api/group/join [post]
+func JoinGroupService(uid int64, roomId int64) (pkgResp.ResponseData, error) {
 	ctx := context.Background()
+
 	// 房间是否存在
 	room := global.Query.Room
 	roomQ := room.WithContext(ctx)
-	roomR, err := roomQ.Where(room.ID.Eq(joinGroupReq.ID)).First()
+	fun := func() (interface{}, error) {
+		return roomQ.Where(room.ID.Eq(roomId)).First()
+	}
+	roomR := model.Room{}
+	key := fmt.Sprintf(enum.RoomCacheByID, roomId)
+	err := utils.GetData(key, &roomR, fun)
 	if err != nil {
-		resp.ErrorResponse(c, "加入群聊失败")
 		global.Logger.Errorf("查询房间失败 %s", err)
-		c.Abort()
-		return
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
+
+	// 是否是群聊
 	if roomR.Type != enum.GROUP {
-		resp.ErrorResponse(c, "加入群聊失败")
 		global.Logger.Errorf("房间类型错误 %s", err)
-		c.Abort()
-		return
+		return pkgResp.ErrorResponseData("房间类型错误"), errors.New("Business Error")
 	}
+
 	// 是否已经加入群聊
 	roomGroup := global.Query.RoomGroup
 	roomGroupQ := roomGroup.WithContext(ctx)
 	// 查询群聊表
-	roomGroupR, err := roomGroupQ.Where(roomGroup.RoomID.Eq(roomR.ID)).First()
-	if err != nil {
-		resp.ErrorResponse(c, "加入群聊失败")
-		global.Logger.Errorf("查询群聊失败 %s", err)
-		c.Abort()
-		return
+	fun = func() (interface{}, error) {
+		return roomGroupQ.Where(roomGroup.RoomID.Eq(roomR.ID)).First()
 	}
-
+	roomGroupR := model.RoomGroup{}
+	key = fmt.Sprintf(enum.RoomGroupCacheByRoomID, roomId)
+	err = utils.GetData(key, &roomR, fun)
+	if err != nil {
+		global.Logger.Errorf("查询群聊失败 %s", err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+	// 查询群成员表
 	groupMember := global.Query.GroupMember
 	groupMemberQ := groupMember.WithContext(ctx)
 	groupMemberR, err := groupMemberQ.Where(groupMember.UID.Eq(uid), groupMember.GroupID.Eq(roomGroupR.ID)).First()
 	if err != nil && err.Error() != "record not found" {
-		resp.ErrorResponse(c, "加入群聊失败")
 		global.Logger.Errorf("查询群成员表失败 %s", err)
-		c.Abort()
-		return
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
+	// 查到了
 	if groupMemberR != nil {
-		resp.ErrorResponse(c, "禁止重复加入群聊")
-		c.Abort()
-		return
+		return pkgResp.ErrorResponseData("禁止重复加入群聊"), errors.New("Business Error")
 	}
 
 	// 加入群聊
+	// 插入群组成员表
 	tx := global.Query.Begin()
 	groupMemberTx := tx.GroupMember.WithContext(ctx)
 	newGroupMember := model.GroupMember{
 		UID:     uid,
 		GroupID: roomGroupR.ID,
 		// 普通成员
-		Role: 3,
+		Role: enum.Member,
 	}
 	if err := groupMemberTx.Create(&newGroupMember); err != nil {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
-			return
 		}
-		resp.ErrorResponse(c, "加入群聊失败")
-		c.Abort()
 		global.Logger.Errorf("添加群组成员表失败 %s", err.Error())
-		return
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
-	// 创建会话表
+	// 插入会话表
 	contactTx := tx.Contact.WithContext(ctx)
 	newContact := model.Contact{
 		UID:    uid,
@@ -333,12 +328,9 @@ func JoinGroupService(c *gin.Context) {
 	if err := contactTx.Create(&newContact); err != nil {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
-			return
 		}
-		resp.ErrorResponse(c, "加入群聊失败")
-		c.Abort()
 		global.Logger.Errorf("添加会话表失败 %s", err.Error())
-		return
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 
 	// 自动发送一条消息
@@ -353,22 +345,24 @@ func JoinGroupService(c *gin.Context) {
 	if err := messageTx.Create(&newMessage); err != nil {
 		if err := tx.Rollback(); err != nil {
 			global.Logger.Errorf("事务回滚失败 %s", err.Error())
-			return
 		}
-		resp.ErrorResponse(c, "加入群聊失败")
-		c.Abort()
 		global.Logger.Errorf("添加消息表失败 %s", err.Error())
-		return
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
+
+	// 提交事务
 	if err := tx.Commit(); err != nil {
 		global.Logger.Errorf("事务提交失败 %s", err.Error())
-		resp.ErrorResponse(c, "加入群聊失败")
-		c.Abort()
-		return
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
-	global.Bus.Publish(enum.NewMessageEvent, newMessage)
 
-	resp.SuccessResponseWithMsg(c, "success")
+	// 发送新消息事件
+	err = jsonUtils.SendMsgSync(enum.NewMessageTopic, newMessage)
+	if err != nil {
+		return pkgResp.ErrorResponseData("系统正忙，请稍后再试"), errors.New("Business Error")
+	}
+
+	return pkgResp.SuccessResponseData(nil), nil
 }
 
 // QuitGroupService 退出群聊
@@ -463,6 +457,8 @@ func QuitGroupService(c *gin.Context) {
 //	@Success	200	{object}	resp.ResponseData	"成功"
 //	@Failure	500	{object}	resp.ResponseData	"内部错误"
 //	@Router		/api/group/getGroupMemberList [get]
+//
+// TODO: 返回成员权限
 func GetGroupMemberListService(c *gin.Context) {
 	uid := c.GetInt64("uid")
 	getGroupMemberListReq := req.GetGroupMemberListReq{}
