@@ -22,9 +22,9 @@ type User struct {
 	LastOptTime  time.Time `gorm:"column:last_opt_time;not null;default:CURRENT_TIMESTAMP(3);comment:最后上下线时间" json:"last_opt_time"` // 最后上下线时间
 	IPInfo       string    `gorm:"column:ip_info;comment:ip信息" json:"ip_info"`                                                      // ip信息
 	ItemID       int64     `gorm:"column:item_id;comment:佩戴的徽章id" json:"item_id"`                                                   // 佩戴的徽章id
-	Status       int32     `gorm:"column:status;comment:使用状态 0.正常 1拉黑" json:"status"`                                               // 使用状态 0.正常 1拉黑
-	CreateTime   time.Time `gorm:"column:create_time;not null;default:CURRENT_TIMESTAMP(3);comment:创建时间" json:"create_time"`        // 创建时间
-	UpdateTime   time.Time `gorm:"column:update_time;not null;default:CURRENT_TIMESTAMP(3);comment:修改时间" json:"update_time"`        // 修改时间
+	Status       int32     `gorm:"column:status;comment:使用状态 1.正常 2.拉黑" json:"status"`                                              // 使用状态 1.正常 2.拉黑
+	CreateTime   time.Time `gorm:"column:create_time;default:CURRENT_TIMESTAMP" json:"create_time"`
+	UpdateTime   time.Time `gorm:"column:update_time;default:CURRENT_TIMESTAMP" json:"update_time"`
 }
 
 // TableName User's table name

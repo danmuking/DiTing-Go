@@ -53,9 +53,9 @@ type room struct {
 	ActiveTime   field.Time   // 群最后消息的更新时间（热点群不需要写扩散，只更新这里）
 	LastMsgID    field.Int64  // 会话中的最后一条消息id
 	ExtJSON      field.String // 额外信息（根据不同类型房间有不同存储的东西）
-	CreateTime   field.Time   // 创建时间
-	UpdateTime   field.Time   // 修改时间
-	DeleteStatus field.Int32  // 房间状态 0正常 1禁用(删好友了禁用)
+	CreateTime   field.Time
+	UpdateTime   field.Time
+	DeleteStatus field.Int32 // 房间状态 1正常 2禁用(删好友了禁用)
 
 	fieldMap map[string]field.Expr
 }

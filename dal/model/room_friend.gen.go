@@ -12,14 +12,14 @@ const TableNameRoomFriend = "room_friend"
 
 // RoomFriend 单聊房间表
 type RoomFriend struct {
-	ID           int64     `gorm:"column:id;primaryKey;autoIncrement:true;comment:id" json:"id"`                             // id
-	RoomID       int64     `gorm:"column:room_id;not null;comment:房间id" json:"room_id"`                                      // 房间id
-	Uid1         int64     `gorm:"column:uid1;not null;comment:uid1（更小的uid）" json:"uid1"`                                    // uid1（更小的uid）
-	Uid2         int64     `gorm:"column:uid2;not null;comment:uid2（更大的uid）" json:"uid2"`                                    // uid2（更大的uid）
-	RoomKey      string    `gorm:"column:room_key;not null;comment:房间key由两个uid拼接，先做排序uid1_uid2" json:"room_key"`             // 房间key由两个uid拼接，先做排序uid1_uid2
-	DeleteStatus int32     `gorm:"column:delete_status;not null;comment:房间状态 0正常 1禁用(删好友了禁用)" json:"delete_status"`          // 房间状态 0正常 1禁用(删好友了禁用)
-	CreateTime   time.Time `gorm:"column:create_time;not null;default:CURRENT_TIMESTAMP(3);comment:创建时间" json:"create_time"` // 创建时间
-	UpdateTime   time.Time `gorm:"column:update_time;not null;default:CURRENT_TIMESTAMP(3);comment:修改时间" json:"update_time"` // 修改时间
+	ID           int64     `gorm:"column:id;primaryKey;autoIncrement:true;comment:id" json:"id"`                    // id
+	RoomID       int64     `gorm:"column:room_id;not null;comment:房间id" json:"room_id"`                             // 房间id
+	Uid1         int64     `gorm:"column:uid1;not null;comment:uid1（更小的uid）" json:"uid1"`                           // uid1（更小的uid）
+	Uid2         int64     `gorm:"column:uid2;not null;comment:uid2（更大的uid）" json:"uid2"`                           // uid2（更大的uid）
+	RoomKey      string    `gorm:"column:room_key;not null;comment:房间key由两个uid拼接，先做排序uid1_uid2" json:"room_key"`    // 房间key由两个uid拼接，先做排序uid1_uid2
+	DeleteStatus int32     `gorm:"column:delete_status;not null;comment:房间状态 1正常 2禁用(删好友了禁用)" json:"delete_status"` // 房间状态 1正常 2禁用(删好友了禁用)
+	CreateTime   time.Time `gorm:"column:create_time;default:CURRENT_TIMESTAMP" json:"create_time"`
+	UpdateTime   time.Time `gorm:"column:update_time;default:CURRENT_TIMESTAMP" json:"update_time"`
 }
 
 // TableName RoomFriend's table name

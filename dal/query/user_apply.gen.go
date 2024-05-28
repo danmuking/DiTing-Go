@@ -54,8 +54,8 @@ type userApply struct {
 	Msg        field.String // 申请信息
 	Status     field.Int32  // 申请状态 1待审批 2同意
 	ReadStatus field.Int32  // 阅读状态 1未读 2已读
-	CreateTime field.Time   // 创建时间
-	UpdateTime field.Time   // 修改时间
+	CreateTime field.Time
+	UpdateTime field.Time
 
 	fieldMap map[string]field.Expr
 }

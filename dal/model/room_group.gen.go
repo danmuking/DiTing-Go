@@ -12,14 +12,14 @@ const TableNameRoomGroup = "room_group"
 
 // RoomGroup 群聊房间表
 type RoomGroup struct {
-	ID           int64     `gorm:"column:id;primaryKey;autoIncrement:true;comment:id" json:"id"`                             // id
-	RoomID       int64     `gorm:"column:room_id;not null;comment:房间id" json:"room_id"`                                      // 房间id
-	Name         string    `gorm:"column:name;not null;comment:群名称" json:"name"`                                             // 群名称
-	Avatar       string    `gorm:"column:avatar;not null;comment:群头像" json:"avatar"`                                         // 群头像
-	ExtJSON      string    `gorm:"column:ext_json;comment:额外信息（根据不同类型房间有不同存储的东西）" json:"ext_json"`                           // 额外信息（根据不同类型房间有不同存储的东西）
-	DeleteStatus int32     `gorm:"column:delete_status;not null;comment:逻辑删除(0-正常,1-删除)" json:"delete_status"`               // 逻辑删除(0-正常,1-删除)
-	CreateTime   time.Time `gorm:"column:create_time;not null;default:CURRENT_TIMESTAMP(3);comment:创建时间" json:"create_time"` // 创建时间
-	UpdateTime   time.Time `gorm:"column:update_time;not null;default:CURRENT_TIMESTAMP(3);comment:修改时间" json:"update_time"` // 修改时间
+	ID           int64     `gorm:"column:id;primaryKey;autoIncrement:true;comment:id" json:"id"`               // id
+	RoomID       int64     `gorm:"column:room_id;not null;comment:房间id" json:"room_id"`                        // 房间id
+	Name         string    `gorm:"column:name;not null;comment:群名称" json:"name"`                               // 群名称
+	Avatar       string    `gorm:"column:avatar;not null;comment:群头像" json:"avatar"`                           // 群头像
+	ExtJSON      string    `gorm:"column:ext_json;comment:额外信息（根据不同类型房间有不同存储的东西）" json:"ext_json"`             // 额外信息（根据不同类型房间有不同存储的东西）
+	DeleteStatus int32     `gorm:"column:delete_status;not null;comment:逻辑删除(1-正常,2-删除)" json:"delete_status"` // 逻辑删除(1-正常,2-删除)
+	CreateTime   time.Time `gorm:"column:create_time;default:CURRENT_TIMESTAMP" json:"create_time"`
+	UpdateTime   time.Time `gorm:"column:update_time;default:CURRENT_TIMESTAMP" json:"update_time"`
 }
 
 // TableName RoomGroup's table name

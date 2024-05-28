@@ -12,15 +12,15 @@ const TableNameUserApply = "user_apply"
 
 // UserApply 用户申请表
 type UserApply struct {
-	ID         int64     `gorm:"column:id;primaryKey;autoIncrement:true;comment:id" json:"id"`                             // id
-	UID        int64     `gorm:"column:uid;not null;comment:申请人uid" json:"uid"`                                            // 申请人uid
-	Type       int32     `gorm:"column:type;not null;comment:申请类型 1加好友" json:"type"`                                       // 申请类型 1加好友
-	TargetID   int64     `gorm:"column:target_id;not null;comment:接收人uid" json:"target_id"`                                // 接收人uid
-	Msg        string    `gorm:"column:msg;not null;comment:申请信息" json:"msg"`                                              // 申请信息
-	Status     int32     `gorm:"column:status;not null;comment:申请状态 1待审批 2同意" json:"status"`                               // 申请状态 1待审批 2同意
-	ReadStatus int32     `gorm:"column:read_status;not null;comment:阅读状态 1未读 2已读" json:"read_status"`                      // 阅读状态 1未读 2已读
-	CreateTime time.Time `gorm:"column:create_time;not null;default:CURRENT_TIMESTAMP(3);comment:创建时间" json:"create_time"` // 创建时间
-	UpdateTime time.Time `gorm:"column:update_time;not null;default:CURRENT_TIMESTAMP(3);comment:修改时间" json:"update_time"` // 修改时间
+	ID         int64     `gorm:"column:id;primaryKey;autoIncrement:true;comment:id" json:"id"`        // id
+	UID        int64     `gorm:"column:uid;not null;comment:申请人uid" json:"uid"`                       // 申请人uid
+	Type       int32     `gorm:"column:type;not null;comment:申请类型 1加好友" json:"type"`                  // 申请类型 1加好友
+	TargetID   int64     `gorm:"column:target_id;not null;comment:接收人uid" json:"target_id"`           // 接收人uid
+	Msg        string    `gorm:"column:msg;not null;comment:申请信息" json:"msg"`                         // 申请信息
+	Status     int32     `gorm:"column:status;not null;comment:申请状态 1待审批 2同意" json:"status"`          // 申请状态 1待审批 2同意
+	ReadStatus int32     `gorm:"column:read_status;not null;comment:阅读状态 1未读 2已读" json:"read_status"` // 阅读状态 1未读 2已读
+	CreateTime time.Time `gorm:"column:create_time;default:CURRENT_TIMESTAMP" json:"create_time"`
+	UpdateTime time.Time `gorm:"column:update_time;default:CURRENT_TIMESTAMP" json:"update_time"`
 }
 
 // TableName UserApply's table name

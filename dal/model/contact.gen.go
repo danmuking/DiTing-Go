@@ -12,14 +12,14 @@ const TableNameContact = "contact"
 
 // Contact 会话列表
 type Contact struct {
-	ID         int64     `gorm:"column:id;primaryKey;autoIncrement:true;comment:id" json:"id"`                             // id
-	UID        int64     `gorm:"column:uid;not null;comment:uid" json:"uid"`                                               // uid
-	RoomID     int64     `gorm:"column:room_id;not null;comment:房间id" json:"room_id"`                                      // 房间id
-	ReadTime   time.Time `gorm:"column:read_time;not null;default:CURRENT_TIMESTAMP(3);comment:阅读到的时间" json:"read_time"`   // 阅读到的时间
-	ActiveTime time.Time `gorm:"column:active_time;comment:会话内消息最后更新的时间(只有普通会话需要维护，全员会话不需要维护)" json:"active_time"`         // 会话内消息最后更新的时间(只有普通会话需要维护，全员会话不需要维护)
-	LastMsgID  int64     `gorm:"column:last_msg_id;comment:会话最新消息id" json:"last_msg_id"`                                   // 会话最新消息id
-	CreateTime time.Time `gorm:"column:create_time;not null;default:CURRENT_TIMESTAMP(3);comment:创建时间" json:"create_time"` // 创建时间
-	UpdateTime time.Time `gorm:"column:update_time;not null;default:CURRENT_TIMESTAMP(3);comment:修改时间" json:"update_time"` // 修改时间
+	ID         int64     `gorm:"column:id;primaryKey;autoIncrement:true;comment:id" json:"id"`                           // id
+	UID        int64     `gorm:"column:uid;not null;comment:uid" json:"uid"`                                             // uid
+	RoomID     int64     `gorm:"column:room_id;not null;comment:房间id" json:"room_id"`                                    // 房间id
+	ReadTime   time.Time `gorm:"column:read_time;not null;default:CURRENT_TIMESTAMP(3);comment:阅读到的时间" json:"read_time"` // 阅读到的时间
+	ActiveTime time.Time `gorm:"column:active_time;comment:会话内消息最后更新的时间(只有普通会话需要维护，全员会话不需要维护)" json:"active_time"`       // 会话内消息最后更新的时间(只有普通会话需要维护，全员会话不需要维护)
+	LastMsgID  int64     `gorm:"column:last_msg_id;comment:会话最新消息id" json:"last_msg_id"`                                 // 会话最新消息id
+	CreateTime time.Time `gorm:"column:create_time;default:CURRENT_TIMESTAMP" json:"create_time"`
+	UpdateTime time.Time `gorm:"column:update_time;default:CURRENT_TIMESTAMP" json:"update_time"`
 }
 
 // TableName Contact's table name

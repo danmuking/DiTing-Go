@@ -47,9 +47,9 @@ type userFriend struct {
 	ID           field.Int64 // id
 	UID          field.Int64 // uid
 	FriendUID    field.Int64 // 好友uid
-	DeleteStatus field.Int32 // 逻辑删除(0-正常,1-删除)
-	CreateTime   field.Time  // 创建时间
-	UpdateTime   field.Time  // 修改时间
+	DeleteStatus field.Int32 // 逻辑删除(1-正常,2-删除)
+	CreateTime   field.Time
+	UpdateTime   field.Time
 
 	fieldMap map[string]field.Expr
 }

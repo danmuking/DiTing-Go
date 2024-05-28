@@ -54,12 +54,12 @@ type message struct {
 	FromUID      field.Int64  // 消息发送者uid
 	Content      field.String // 消息内容
 	ReplyMsgID   field.Int64  // 回复的消息内容
-	DeleteStatus field.Int32  // 消息状态 0正常 1删除
+	DeleteStatus field.Int32  // 消息状态 1正常 2删除
 	GapCount     field.Int32  // 与回复的消息间隔多少条
 	Type         field.Int32  // 消息类型 1正常文本 2.撤回消息
 	Extra        field.String // 扩展信息
-	CreateTime   field.Time   // 创建时间
-	UpdateTime   field.Time   // 修改时间
+	CreateTime   field.Time
+	UpdateTime   field.Time
 
 	fieldMap map[string]field.Expr
 }

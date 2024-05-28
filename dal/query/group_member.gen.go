@@ -48,8 +48,8 @@ type groupMember struct {
 	GroupID    field.Int64 // 群主id
 	UID        field.Int64 // 成员uid
 	Role       field.Int32 // 成员角色 1群主 2管理员 3普通成员
-	CreateTime field.Time  // 创建时间
-	UpdateTime field.Time  // 修改时间
+	CreateTime field.Time
+	UpdateTime field.Time
 
 	fieldMap map[string]field.Expr
 }

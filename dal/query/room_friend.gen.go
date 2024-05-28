@@ -51,9 +51,9 @@ type roomFriend struct {
 	Uid1         field.Int64  // uid1（更小的uid）
 	Uid2         field.Int64  // uid2（更大的uid）
 	RoomKey      field.String // 房间key由两个uid拼接，先做排序uid1_uid2
-	DeleteStatus field.Int32  // 房间状态 0正常 1禁用(删好友了禁用)
-	CreateTime   field.Time   // 创建时间
-	UpdateTime   field.Time   // 修改时间
+	DeleteStatus field.Int32  // 房间状态 1正常 2禁用(删好友了禁用)
+	CreateTime   field.Time
+	UpdateTime   field.Time
 
 	fieldMap map[string]field.Expr
 }

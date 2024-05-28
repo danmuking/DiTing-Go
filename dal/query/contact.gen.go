@@ -52,8 +52,8 @@ type contact struct {
 	ReadTime   field.Time  // 阅读到的时间
 	ActiveTime field.Time  // 会话内消息最后更新的时间(只有普通会话需要维护，全员会话不需要维护)
 	LastMsgID  field.Int64 // 会话最新消息id
-	CreateTime field.Time  // 创建时间
-	UpdateTime field.Time  // 修改时间
+	CreateTime field.Time
+	UpdateTime field.Time
 
 	fieldMap map[string]field.Expr
 }

@@ -51,9 +51,9 @@ type roomGroup struct {
 	Name         field.String // 群名称
 	Avatar       field.String // 群头像
 	ExtJSON      field.String // 额外信息（根据不同类型房间有不同存储的东西）
-	DeleteStatus field.Int32  // 逻辑删除(0-正常,1-删除)
-	CreateTime   field.Time   // 创建时间
-	UpdateTime   field.Time   // 修改时间
+	DeleteStatus field.Int32  // 逻辑删除(1-正常,2-删除)
+	CreateTime   field.Time
+	UpdateTime   field.Time
 
 	fieldMap map[string]field.Expr
 }

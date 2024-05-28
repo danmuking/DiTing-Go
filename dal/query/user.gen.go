@@ -61,9 +61,9 @@ type user struct {
 	LastOptTime  field.Time   // 最后上下线时间
 	IPInfo       field.String // ip信息
 	ItemID       field.Int64  // 佩戴的徽章id
-	Status       field.Int32  // 使用状态 0.正常 1拉黑
-	CreateTime   field.Time   // 创建时间
-	UpdateTime   field.Time   // 修改时间
+	Status       field.Int32  // 使用状态 1.正常 2.拉黑
+	CreateTime   field.Time
+	UpdateTime   field.Time
 
 	fieldMap map[string]field.Expr
 }

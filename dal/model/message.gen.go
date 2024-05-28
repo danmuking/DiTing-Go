@@ -12,17 +12,17 @@ const TableNameMessage = "message"
 
 // Message 消息表
 type Message struct {
-	ID           int64     `gorm:"column:id;primaryKey;autoIncrement:true;comment:id" json:"id"`                             // id
-	RoomID       int64     `gorm:"column:room_id;not null;comment:会话表id" json:"room_id"`                                     // 会话表id
-	FromUID      int64     `gorm:"column:from_uid;not null;comment:消息发送者uid" json:"from_uid"`                                // 消息发送者uid
-	Content      string    `gorm:"column:content;comment:消息内容" json:"content"`                                               // 消息内容
-	ReplyMsgID   int64     `gorm:"column:reply_msg_id;comment:回复的消息内容" json:"reply_msg_id"`                                  // 回复的消息内容
-	DeleteStatus int32     `gorm:"column:delete_status;not null;comment:消息状态 0正常 1删除" json:"delete_status"`                  // 消息状态 0正常 1删除
-	GapCount     int32     `gorm:"column:gap_count;comment:与回复的消息间隔多少条" json:"gap_count"`                                    // 与回复的消息间隔多少条
-	Type         int32     `gorm:"column:type;default:1;comment:消息类型 1正常文本 2.撤回消息" json:"type"`                              // 消息类型 1正常文本 2.撤回消息
-	Extra        string    `gorm:"column:extra;comment:扩展信息" json:"extra"`                                                   // 扩展信息
-	CreateTime   time.Time `gorm:"column:create_time;not null;default:CURRENT_TIMESTAMP(3);comment:创建时间" json:"create_time"` // 创建时间
-	UpdateTime   time.Time `gorm:"column:update_time;not null;default:CURRENT_TIMESTAMP(3);comment:修改时间" json:"update_time"` // 修改时间
+	ID           int64     `gorm:"column:id;primaryKey;autoIncrement:true;comment:id" json:"id"`            // id
+	RoomID       int64     `gorm:"column:room_id;not null;comment:会话表id" json:"room_id"`                    // 会话表id
+	FromUID      int64     `gorm:"column:from_uid;not null;comment:消息发送者uid" json:"from_uid"`               // 消息发送者uid
+	Content      string    `gorm:"column:content;comment:消息内容" json:"content"`                              // 消息内容
+	ReplyMsgID   int64     `gorm:"column:reply_msg_id;comment:回复的消息内容" json:"reply_msg_id"`                 // 回复的消息内容
+	DeleteStatus int32     `gorm:"column:delete_status;not null;comment:消息状态 1正常 2删除" json:"delete_status"` // 消息状态 1正常 2删除
+	GapCount     int32     `gorm:"column:gap_count;comment:与回复的消息间隔多少条" json:"gap_count"`                   // 与回复的消息间隔多少条
+	Type         int32     `gorm:"column:type;default:1;comment:消息类型 1正常文本 2.撤回消息" json:"type"`             // 消息类型 1正常文本 2.撤回消息
+	Extra        string    `gorm:"column:extra;comment:扩展信息" json:"extra"`                                  // 扩展信息
+	CreateTime   time.Time `gorm:"column:create_time;default:CURRENT_TIMESTAMP" json:"create_time"`
+	UpdateTime   time.Time `gorm:"column:update_time;default:CURRENT_TIMESTAMP" json:"update_time"`
 }
 
 // TableName Message's table name
