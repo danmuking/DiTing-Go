@@ -459,81 +459,80 @@ func QuitGroupService(c *gin.Context) {
 //	@Router		/api/group/getGroupMemberList [get]
 //
 // TODO: 返回成员权限
-func GetGroupMemberListService(c *gin.Context) {
-	uid := c.GetInt64("uid")
-	getGroupMemberListReq := req.GetGroupMemberListReq{}
-	if err := c.ShouldBindQuery(&getGroupMemberListReq); err != nil {
-		resp.ErrorResponse(c, "参数错误")
-		global.Logger.Errorf("参数错误: %v", err)
-		c.Abort()
-		return
-	}
+func GetGroupMemberListService(uid int64, roomId int64, cursor *string, pageSize int) (pkgResp.ResponseData, error) {
 	ctx := context.Background()
 
 	// 查询房间表
 	room := global.Query.Room
 	roomQ := room.WithContext(ctx)
-	roomR, err := roomQ.Where(room.ID.Eq(getGroupMemberListReq.RoomId)).First()
-	if err != nil {
-		resp.ErrorResponse(c, "查询群聊失败")
-		global.Logger.Errorf("查询房间失败 %s", err)
-		c.Abort()
-		return
+	fun := func() (interface{}, error) {
+		return roomQ.Where(room.ID.Eq(roomId)).First()
 	}
+	roomR := model.Room{}
+	key := fmt.Sprintf(enum.RoomCacheByID, roomId)
+	err := utils.GetData(key, &roomR, fun)
+	if err != nil {
+		global.Logger.Errorf("查询房间失败 %s", err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
 	// 查询群聊表
 	roomGroup := global.Query.RoomGroup
 	roomGroupQ := roomGroup.WithContext(ctx)
-	roomGroupR, err := roomGroupQ.Where(roomGroup.RoomID.Eq(roomR.ID)).First()
+	fun = func() (interface{}, error) {
+		return roomGroupQ.Where(roomGroup.RoomID.Eq(roomR.ID)).First()
+	}
+	roomGroupR := model.RoomGroup{}
+	key = fmt.Sprintf(enum.RoomGroupCacheByRoomID, roomId)
+	err = utils.GetData(key, &roomGroupR, fun)
 	if err != nil {
-		resp.ErrorResponse(c, "查询群聊失败")
 		global.Logger.Errorf("查询群聊失败 %s", err)
-		c.Abort()
-		return
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 
 	// 查询用户是否在群聊中
 	groupMember := global.Query.GroupMember
 	groupMemberQ := groupMember.WithContext(ctx)
-	_, err = groupMemberQ.Where(groupMember.UID.Eq(uid), groupMember.GroupID.Eq(roomGroupR.ID)).First()
+	fun = func() (interface{}, error) {
+		return groupMemberQ.Where(groupMember.UID.Eq(uid), groupMember.GroupID.Eq(roomGroupR.ID)).First()
+	}
+	groupMemberR := model.GroupMember{}
+	key = fmt.Sprintf(enum.GroupMemberCacheByGroupIdAndUid, roomGroupR.ID, uid)
+	err = utils.GetData(key, &groupMemberR, fun)
+	// 没查到就没权限
 	if err != nil {
-		resp.ErrorResponse(c, "查询群聊失败")
 		global.Logger.Errorf("查询群组成员表失败 %s", err)
-		c.Abort()
-		return
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 
 	// 分页查询
 	// 默认值
 	// 划分游标，status_activateTime
 	var userR []dto.GetGroupMemberDto
-	status, activeTime := cursorSplit(getGroupMemberListReq.Cursor)
+	status, activeTime := cursorSplit(cursor)
 	// 查询群组成员表,联表游标翻页
 	user := global.Query.User
 	userQ := user.WithContext(ctx)
-	if err := userQ.Select(user.ID, user.Name, user.Avatar, user.ActiveStatus, user.LastOptTime).LeftJoin(groupMemberQ, user.ID.EqCol(groupMember.UID)).Where(groupMember.GroupID.Eq(roomGroupR.ID), user.ActiveStatus.Eq(int32(status)), user.LastOptTime.Gt(activeTime)).Limit(getGroupMemberListReq.PageSize).Scan(&userR); err != nil {
-		resp.ErrorResponse(c, "查询群聊失败")
+	if err := userQ.Select(user.ID, user.Name, user.Avatar, user.ActiveStatus, user.LastOptTime).LeftJoin(groupMemberQ, user.ID.EqCol(groupMember.UID)).Where(groupMember.GroupID.Eq(roomGroupR.ID), user.ActiveStatus.Eq(int32(status)), user.LastOptTime.Gt(activeTime)).Limit(pageSize).Scan(&userR); err != nil {
 		global.Logger.Errorf("查询群组成员表失败 %s", err)
-		c.Abort()
-		return
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 	// 不足，用不在线的补充
-	if len(userR) < getGroupMemberListReq.PageSize && status == 1 {
+	if len(userR) < pageSize && status == enum.Online {
 		var add []dto.GetGroupMemberDto
-		if err := userQ.Select(user.ID, user.Name, user.Avatar, user.ActiveStatus, user.LastOptTime).LeftJoin(groupMemberQ, user.ID.EqCol(groupMember.UID)).Where(groupMember.GroupID.Eq(roomGroupR.ID), user.ActiveStatus.Eq(2)).Limit(getGroupMemberListReq.PageSize - len(userR)).Scan(&add); err != nil {
-			resp.ErrorResponse(c, "查询群聊失败")
+		if err := userQ.Select(user.ID, user.Name, user.Avatar, user.ActiveStatus, user.LastOptTime).LeftJoin(groupMemberQ, user.ID.EqCol(groupMember.UID)).Where(groupMember.GroupID.Eq(roomGroupR.ID), user.ActiveStatus.Eq(enum.Offline)).Limit(pageSize - len(userR)).Scan(&add); err != nil {
 			global.Logger.Errorf("查询群组成员表失败 %s", err)
-			c.Abort()
-			return
+			return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 		}
 		userR = append(userR, add...)
 	}
 
 	newCursor := genCursor(userR)
-	resp.SuccessResponse(c, pkgResp.PageResp{
+	return pkgResp.SuccessResponseData(pkgResp.PageResp{
 		Cursor: &newCursor,
-		IsLast: len(userR) < getGroupMemberListReq.PageSize,
+		IsLast: len(userR) < pageSize,
 		Data:   userR,
-	})
+	}), nil
 }
 
 // GrantAdministratorService 授予管理员权限
@@ -684,7 +683,7 @@ func RemoveAdministratorService(c *gin.Context) {
 // 分割游标
 func cursorSplit(cursor *string) (int, time.Time) {
 	if cursor == nil {
-		return 1, time.Time{}
+		return enum.Online, time.Time{}
 	}
 	// TODO： 抽取为常量
 	lines := strings.Split(*cursor, "_")

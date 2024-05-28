@@ -85,3 +85,32 @@ func JoinGroupController(c *gin.Context) {
 	}
 	resp.ReturnSuccessResponse(c, response)
 }
+
+// GetGroupMemberListController 获取群成员列表
+//
+//	@Summary	获取群成员列表
+//	@Produce	json
+//	@Param		roomId	query		int					true	"房间id"
+//	@Param		pageSize	query		int					true	"每页数量"
+//	@Param		cursor	query		string					false	"游标"
+//	@Success	200	{object}	resp.ResponseData	"成功"
+//	@Failure	500	{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/group/getGroupMemberList [get]
+func GetGroupMemberListController(c *gin.Context) {
+	uid := c.GetInt64("uid")
+	getGroupMemberListReq := req.GetGroupMemberListReq{}
+	if err := c.ShouldBindQuery(&getGroupMemberListReq); err != nil {
+		resp.ErrorResponse(c, "参数错误")
+		global.Logger.Errorf("参数错误: %v", err)
+		c.Abort()
+		return
+	}
+
+	response, err := service.GetGroupMemberListService(uid, getGroupMemberListReq.RoomId, getGroupMemberListReq.Cursor, getGroupMemberListReq.PageSize)
+	if err != nil {
+		c.Abort()
+		resp.ReturnErrorResponse(c, response)
+		return
+	}
+	resp.ReturnSuccessResponse(c, response)
+}
