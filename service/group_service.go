@@ -373,80 +373,91 @@ func JoinGroupService(uid int64, roomId int64) (pkgResp.ResponseData, error) {
 //	@Success	200	{object}	resp.ResponseData	"成功"
 //	@Failure	500	{object}	resp.ResponseData	"内部错误"
 //	@Router		/api/group/create [post]
-func QuitGroupService(c *gin.Context) {
-	uid := c.GetInt64("uid")
-	quitGroupReq := req.QuitGroupReq{}
-	if err := c.ShouldBind(&quitGroupReq); err != nil {
-		resp.ErrorResponse(c, "参数错误")
-		global.Logger.Errorf("参数错误: %v", err)
-		c.Abort()
-		return
-	}
-
+func QuitGroupService(uid int64, roomId int64) (pkgResp.ResponseData, error) {
 	ctx := context.Background()
+
 	tx := global.Query.Begin()
+
 	// 群聊是否存在
 	room := global.Query.Room
 	roomTx := tx.Room.WithContext(ctx)
-	_, err := roomTx.Where(room.ID.Eq(quitGroupReq.ID)).First()
+	fun := func() (interface{}, error) {
+		return roomTx.Where(room.ID.Eq(roomId)).First()
+	}
+	roomR := model.Room{}
+	key := fmt.Sprintf(enum.RoomCacheByID, roomId)
+	err := utils.GetData(key, &roomR, fun)
 	if err != nil {
 		if err.Error() != gorm.ErrRecordNotFound.Error() {
 			global.Logger.Errorf("查询房间失败 %s", err)
 		}
-		resp.ErrorResponse(c, "群聊不存在")
-		c.Abort()
-		return
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
+
 	// 用户是否在群聊中
-	groupMember := global.Query.GroupMember
-	groupMemberTx := tx.GroupMember.WithContext(ctx)
-	_, err = groupMemberTx.Where(groupMember.UID.Eq(uid), groupMember.GroupID.Eq(quitGroupReq.ID)).First()
-	if err != nil {
-		if err.Error() == gorm.ErrRecordNotFound.Error() {
-			resp.ErrorResponse(c, "未加入群聊")
-			c.Abort()
-			return
-		}
-		resp.ErrorResponse(c, "退出群聊失败")
-		global.Logger.Errorf("查询群组成员表失败 %s", err)
-		c.Abort()
-		return
-	}
-	// 删除会话表
-	contact := global.Query.Contact
-	contactTx := tx.Contact.WithContext(ctx)
-	if _, err := contactTx.Where(contact.UID.Eq(uid), contact.RoomID.Eq(quitGroupReq.ID)).Delete(); err != nil {
-		resp.ErrorResponse(c, "退出群聊失败")
-		global.Logger.Errorf("删除会话表失败 %s", err)
-		c.Abort()
-		return
-	}
-	// 删除群组成员表
 	// 查询群组
 	roomGroup := global.Query.RoomGroup
 	roomGroupTx := tx.RoomGroup.WithContext(ctx)
-	roomGroupR, err := roomGroupTx.Where(roomGroup.RoomID.Eq(quitGroupReq.ID)).First()
+	fun = func() (interface{}, error) {
+		return roomGroupTx.Where(roomGroup.RoomID.Eq(roomId)).First()
+	}
+	roomGroupR := model.RoomGroup{}
+	key = fmt.Sprintf(enum.RoomGroupCacheByRoomID, roomId)
+	err = utils.GetData(key, &roomGroupR, fun)
 	if err != nil {
-		resp.ErrorResponse(c, "退出群聊失败")
 		global.Logger.Errorf("查询群聊失败 %s", err)
-		c.Abort()
-		return
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
+	// 查询成员
+	groupMember := global.Query.GroupMember
+	groupMemberTx := tx.GroupMember.WithContext(ctx)
+	fun = func() (interface{}, error) {
+		return groupMemberTx.Where(groupMember.UID.Eq(uid), groupMember.GroupID.Eq(roomGroupR.ID)).First()
+	}
+	groupMemberR := model.GroupMember{}
+	key = fmt.Sprintf(enum.GroupMemberCacheByGroupIdAndUid, roomId, uid)
+	err = utils.GetData(key, &groupMemberR, fun)
+	if err != nil {
+		if err.Error() == gorm.ErrRecordNotFound.Error() {
+			return pkgResp.ErrorResponseData("用户不在群聊中"), errors.New("Business Error")
+		}
+		global.Logger.Errorf("查询群组成员表失败 %s", err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
+	// 删除会话表
+	contact := global.Query.Contact
+	contactTx := tx.Contact.WithContext(ctx)
+	fun = func() (interface{}, error) {
+		return contactTx.Where(contact.UID.Eq(uid), contact.RoomID.Eq(roomId)).First()
+	}
+	contactR := model.Contact{}
+	key = fmt.Sprintf(enum.ContactCacheById, contactR.ID)
+	err = utils.GetData(key, &contactR, fun)
+	if _, err := contactTx.Where(contact.UID.Eq(uid), contact.RoomID.Eq(roomId)).Delete(); err != nil {
+		global.Logger.Errorf("删除会话表失败 %s", err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+	//删除缓存
+	redisCache.RemoveContact(contactR)
+
+	// 删除群组成员表
+	//删除群组成员
 	if _, err := groupMemberTx.Where(groupMember.UID.Eq(uid), groupMember.GroupID.Eq(roomGroupR.ID)).Delete(); err != nil {
-		resp.ErrorResponse(c, "退出群聊失败")
 		global.Logger.Errorf("删除群组成员表失败 %s", err)
-		c.Abort()
-		return
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
+	//删除缓存
+	redisCache.RemoveGroupMember(groupMemberR)
 
 	if err := tx.Commit(); err != nil {
 		global.Logger.Errorf("事务提交失败 %s", err)
-		resp.ErrorResponse(c, "退出群聊失败")
-		c.Abort()
-		return
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
-	resp.SuccessResponseWithMsg(c, "success")
-	return
+
+	//TODO:发送消息
+
+	return pkgResp.SuccessResponseData(nil), nil
 }
 
 // GetGroupMemberListService 退出群聊

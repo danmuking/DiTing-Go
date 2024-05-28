@@ -73,7 +73,7 @@ func initGin() {
 		apiGroup.POST("/create", controller.CreateGroupController)
 		apiGroup.DELETE("/delete/", controller.DeleteGroupController)
 		apiGroup.POST("/join", controller.JoinGroupController)
-		apiGroup.POST("/quit", service.QuitGroupService)
+		apiGroup.POST("/quit", controller.QuitGroupController)
 		apiGroup.GET("/getGroupMemberList", controller.GetGroupMemberListController)
 		apiGroup.POST("/grantAdministrator", service.GrantAdministratorService)
 		apiGroup.POST("/removeAdministrator", service.RemoveAdministratorService)

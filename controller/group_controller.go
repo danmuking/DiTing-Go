@@ -86,6 +86,32 @@ func JoinGroupController(c *gin.Context) {
 	resp.ReturnSuccessResponse(c, response)
 }
 
+// QuitGroupController 退出群聊
+//
+//	@Summary	退出群聊
+//	@Produce	json
+//	@Param		roomId	body		int					true	"房间id"
+//	@Success	200	{object}	resp.ResponseData	"成功"
+//	@Failure	500	{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/group/quit [post]
+func QuitGroupController(c *gin.Context) {
+	uid := c.GetInt64("uid")
+	quitGroupReq := req.QuitGroupReq{}
+	if err := c.ShouldBind(&quitGroupReq); err != nil {
+		resp.ErrorResponse(c, "参数错误")
+		global.Logger.Errorf("参数错误: %v", err)
+		c.Abort()
+		return
+	}
+	response, err := service.QuitGroupService(uid, quitGroupReq.RoomId)
+	if err != nil {
+		c.Abort()
+		resp.ReturnErrorResponse(c, response)
+		return
+	}
+	resp.ReturnSuccessResponse(c, response)
+}
+
 // GetGroupMemberListController 获取群成员列表
 //
 //	@Summary	获取群成员列表

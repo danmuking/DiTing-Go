@@ -46,3 +46,8 @@ func RemoveUserApply(uid, friendUid int64) {
 func RemoveContact(contact model.Contact) {
 	utils.RemoveData(fmt.Sprintf(enum.ContactCacheById, contact.ID))
 }
+
+// RemoveGroupMember 移除群组成员缓存
+func RemoveGroupMember(groupMember model.GroupMember) {
+	utils.RemoveData(fmt.Sprintf(enum.GroupMemberCacheByGroupIdAndUid, groupMember.GroupID, groupMember.UID))
+}
