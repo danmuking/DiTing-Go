@@ -16,12 +16,13 @@ import (
 	"DiTing-Go/utils/redisCache"
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
-	"gorm.io/gen"
-	"gorm.io/gorm"
 	"sort"
 	"strconv"
 	"time"
+
+	"github.com/pkg/errors"
+	"gorm.io/gen"
+	"gorm.io/gorm"
 )
 
 // ApplyFriendService 添加好友
@@ -246,6 +247,13 @@ func AgreeFriend(uid, friendUid int64) error {
 	// 查到了,更新状态
 	if err == nil {
 		_, err := userFriendTx.Where(userFriend.UID.Eq(uid), userFriend.FriendUID.Eq(friendUid)).Update(userFriend.DeleteStatus, enum.NORMAL)
+		if err != nil {
+			if err := tx.Rollback(); err != nil {
+				global.Logger.Errorf("事务回滚失败 %s", err.Error())
+			}
+			global.Logger.Errorf("更新好友关系失败 %s", err.Error())
+			return err
+		}
 		_, err = userFriendTx.Where(userFriend.UID.Eq(friendUid), userFriend.FriendUID.Eq(uid)).Update(userFriend.DeleteStatus, enum.NORMAL)
 		if err != nil {
 			if err := tx.Rollback(); err != nil {

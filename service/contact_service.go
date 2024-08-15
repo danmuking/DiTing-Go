@@ -9,17 +9,17 @@ import (
 	"DiTing-Go/global"
 	pkgEnum "DiTing-Go/pkg/domain/enum"
 	pkgReq "DiTing-Go/pkg/domain/vo/req"
-	"DiTing-Go/pkg/domain/vo/resp"
 	pkgResp "DiTing-Go/pkg/domain/vo/resp"
 	"DiTing-Go/pkg/utils"
 	"DiTing-Go/service/adapter"
 	"context"
-	"github.com/gin-gonic/gin"
-	cmap "github.com/orcaman/concurrent-map/v2"
-	"github.com/pkg/errors"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/pkg/errors"
 )
 
 func GetContactListService(uid int64, pageReq pkgReq.PageReq) (pkgResp.ResponseData, error) {
@@ -280,7 +280,7 @@ func GetContactDetailService(c *gin.Context) {
 	uid := c.GetInt64("uid")
 	getMessageListReq := req.GetMessageListReq{}
 	if err := c.ShouldBindQuery(&getMessageListReq); err != nil { //ShouldBind()会自动推导
-		resp.ErrorResponse(c, "参数错误")
+		pkgResp.ErrorResponse(c, "参数错误")
 		c.Abort()
 		return
 	}
@@ -288,7 +288,7 @@ func GetContactDetailService(c *gin.Context) {
 	cursor, err := timestampToTime(getMessageListReq.Cursor)
 	if err != nil {
 		global.Logger.Errorf("时间戳转换失败 %s", err)
-		resp.ErrorResponse(c, "系统正忙，请稍后再试")
+		pkgResp.ErrorResponse(c, "系统正忙，请稍后再试")
 		c.Abort()
 		return
 	}
@@ -302,7 +302,7 @@ func GetContactDetailService(c *gin.Context) {
 	_, err = contactQ.Where(contact.UID.Eq(uid), contact.RoomID.Eq(roomId)).Update(contact.ReadTime, time.Now())
 	if err != nil {
 		global.Logger.Errorf("更新会话失败 %s", err)
-		resp.ErrorResponse(c, "系统正忙，请稍后再试")
+		pkgResp.ErrorResponse(c, "系统正忙，请稍后再试")
 		c.Abort()
 		return
 	}
@@ -311,12 +311,12 @@ func GetContactDetailService(c *gin.Context) {
 	pageResp, err := GetContactDetail(roomId, pageRequest)
 	if err != nil {
 		global.Logger.Errorf("查询会话详情失败 %s", err)
-		resp.ErrorResponse(c, "系统正忙，请稍后再试")
+		pkgResp.ErrorResponse(c, "系统正忙，请稍后再试")
 		c.Abort()
 		return
 	}
-	resp.SuccessResponse(c, pageResp)
-	return
+
+	pkgResp.SuccessResponse(c, pageResp)
 }
 
 func GetContactDetail(roomID int64, pageRequest pkgReq.PageReq) (*pkgResp.PageResp, error) {
