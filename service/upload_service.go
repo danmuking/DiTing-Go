@@ -9,11 +9,12 @@ import (
 	"DiTing-Go/pkg/domain/vo/resp"
 	"context"
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/goccy/go-json"
 	"github.com/minio/minio-go/v7"
-	"strconv"
-	"time"
 )
 
 // GetPreSigned 签发url
@@ -29,7 +30,7 @@ func GetPreSigned(c *gin.Context) {
 	}
 	roomId, err := strconv.ParseInt(roomIdStr, 10, 64)
 	if err != nil {
-		global.Logger.Errorf("参数错误 %s", roomId)
+		global.Logger.Errorf("参数错误 %s", string(roomId))
 		resp.ErrorResponse(c, "参数错误")
 		c.Abort()
 		return
@@ -125,5 +126,4 @@ func GetPreSigned(c *gin.Context) {
 	global.Bus.Publish(enum.NewMessageEvent, newMsg)
 
 	resp.SuccessResponse(c, preSignedResp)
-	return
 }
