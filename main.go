@@ -1,7 +1,8 @@
 package main
 
 import (
-	_ "DiTing-Go/event/listener"
+	//_ "DiTing-Go/event/listener"
+	"DiTing-Go/global"
 	"DiTing-Go/routes"
 )
 
@@ -10,6 +11,11 @@ import (
 // @in header
 // @name Authorization
 func main() {
-	//global.InitDB()
+	// 初始化数据库连接
+	global.DBInit()
+	//初始化redis连接
+	global.RedisInit()
+	global.LogInit()
+
 	routes.InitRouter()
 }

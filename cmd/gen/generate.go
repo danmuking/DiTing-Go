@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
-var MySQLDSN = fmt.Sprintf("%s:%s@tcp(%s:%s)/diting?charset=utf8mb4&parseTime=True", viper.GetString("mysql.username"), viper.GetString("mysql.password"), viper.GetString("mysql.host"), viper.GetString("mysql.port"))
+var MySQLDSN = fmt.Sprintf("%s:%s@tcp(%s:%s)/DiTing?charset=utf8mb4&parseTime=True", viper.GetString("mysql.username"), viper.GetString("mysql.password"), viper.GetString("mysql.host"), viper.GetString("mysql.port"))
 
 func connectDB(dsn string) *gorm.DB {
 	db, err := gorm.Open(mysql.Open(dsn))

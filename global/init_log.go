@@ -1,7 +1,6 @@
 package global
 
 import (
-	"fmt"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"io"
@@ -11,7 +10,7 @@ import (
 
 var Logger *logrus.Logger
 
-func init() {
+func LogInit() {
 	logFilePath := viper.GetString("log.log_file_path")
 	logFileName := viper.GetString("log.log_file_name")
 	//日志文件
@@ -19,7 +18,8 @@ func init() {
 	//写入文件
 	src, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		fmt.Println("err", err)
+		// 失败不启动
+		panic("日志文件写入失败, err: " + err.Error())
 	}
 
 	//实例化

@@ -5,7 +5,7 @@ import "time"
 const (
 	CacheTime  = 7 * 24 * time.Hour
 	Project    = "diting:"
-	User       = Project + "user:"
+	User       = Project + "User"
 	UserFriend = Project + "userFriend:"
 	UserApply  = Project + "userApply:"
 	RoomFriend = Project + "roomFriend:"
@@ -21,8 +21,10 @@ const (
 	RoomFriendCacheByUidAndFriendUid = RoomFriend + "%d_%d"
 
 	// 用户缓存
-	UserCacheByID   = User + "%d"
-	UserCacheByName = User + "%s"
+	UserCacheByID    = User + "%d"
+	UserCacheByName  = User + "%s"
+	UserCacheByPhone = User + "Phone:" + "%s"
+	UserCaptcha      = User + "Captcha:" + "%s"
 
 	// 用户好友缓存
 	UserFriendCacheByUidAndFriendUid = UserFriend + "%d_%d"

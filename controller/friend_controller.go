@@ -1,185 +1,186 @@
 package controller
 
-import (
-	"DiTing-Go/domain/vo/req"
-	pkgReq "DiTing-Go/pkg/domain/vo/req"
-	"DiTing-Go/pkg/domain/vo/resp"
-	"DiTing-Go/service"
-	"github.com/gin-gonic/gin"
-)
-
-// ApplyFriendController 添加好友
 //
-//	@Summary	添加好友
-//	@Produce	json
-//	@Param		uid	body		int					true	"好友uid"
-//	@Param		msg	body		string				true	"验证消息"
-//	@Success	200	{object}	resp.ResponseData	"成功"
-//	@Failure	500	{object}	resp.ResponseData	"内部错误"
-//	@Router		/api/user/add [post]
-func ApplyFriendController(c *gin.Context) {
-	uid := c.GetInt64("uid")
-	applyReq := req.UserApplyReq{}
-	if err := c.ShouldBind(&applyReq); err != nil {
-		resp.ErrorResponse(c, "参数错误")
-		c.Abort()
-		return
-	}
-	response, err := service.ApplyFriendService(uid, applyReq)
-	if err != nil {
-		c.Abort()
-		resp.ReturnErrorResponse(c, response)
-		return
-	}
-	resp.ReturnSuccessResponse(c, response)
-	return
-}
-
-// DeleteFriendController 删除好友
+//import (
+//	"DiTing-Go/domain/vo/req"
+//	pkgReq "DiTing-Go/pkg/domain/vo/req"
+//	"DiTing-Go/pkg/domain/vo/resp"
+//	"DiTing-Go/service"
+//	"github.com/gin-gonic/gin"
+//)
 //
-//	@Summary	删除好友
-//	@Produce	json
-//	@Param		uid	body		int					true	"好友uid"
-//	@Success	200	{object}	resp.ResponseData	"成功"
-//	@Failure	500	{object}	resp.ResponseData	"内部错误"
-//	@Router		/api/user/delete/:uid [delete]
-func DeleteFriendController(c *gin.Context) {
-	uid := c.GetInt64("uid")
-	deleteFriendReq := req.DeleteFriendReq{}
-	if err := c.ShouldBind(&deleteFriendReq); err != nil {
-		resp.ErrorResponse(c, "参数错误")
-		return
-	}
-	response, err := service.DeleteFriendService(uid, deleteFriendReq)
-	if err != nil {
-		c.Abort()
-		resp.ReturnErrorResponse(c, response)
-		return
-	}
-	resp.ReturnSuccessResponse(c, response)
-}
-
-// AgreeFriendController 同意好友申请
+//// ApplyFriendController 添加好友
+////
+////	@Summary	添加好友
+////	@Produce	json
+////	@Param		uid	body		int					true	"好友uid"
+////	@Param		msg	body		string				true	"验证消息"
+////	@Success	200	{object}	resp.ResponseData	"成功"
+////	@Failure	500	{object}	resp.ResponseData	"内部错误"
+////	@Router		/api/user/add [post]
+//func ApplyFriendController(c *gin.Context) {
+//	uid := c.GetInt64("uid")
+//	applyReq := req.UserApplyReq{}
+//	if err := c.ShouldBind(&applyReq); err != nil {
+//		resp.ErrorResponse(c, "参数错误")
+//		c.Abort()
+//		return
+//	}
+//	response, err := service.ApplyFriendService(uid, applyReq)
+//	if err != nil {
+//		c.Abort()
+//		resp.ReturnErrorResponse(c, response)
+//		return
+//	}
+//	resp.ReturnSuccessResponse(c, response)
+//	return
+//}
 //
-//	@Summary	同意好友申请
-//	@Produce	json
-//	@Param		uid	body		int					true	"好友uid"
-//	@Success	200	{object}	resp.ResponseData	"成功"
-//	@Failure	500	{object}	resp.ResponseData	"内部错误"
-//	@Router		/api/user/agree [put]
-func AgreeFriendController(c *gin.Context) {
-	uid := c.GetInt64("uid")
-	agreeFriendReq := req.AgreeFriendReq{}
-	if err := c.ShouldBind(&agreeFriendReq); err != nil { //ShouldBind()会自动推导
-		resp.ErrorResponse(c, "参数错误")
-		c.Abort()
-		return
-	}
-	response, err := service.AgreeFriendService(uid, agreeFriendReq.Uid)
-	if err != nil {
-		c.Abort()
-		resp.ReturnErrorResponse(c, response)
-		return
-	}
-	resp.ReturnSuccessResponse(c, response)
-}
-
-// GetUserApplyController 同意好友申请
+//// DeleteFriendController 删除好友
+////
+////	@Summary	删除好友
+////	@Produce	json
+////	@Param		uid	body		int					true	"好友uid"
+////	@Success	200	{object}	resp.ResponseData	"成功"
+////	@Failure	500	{object}	resp.ResponseData	"内部错误"
+////	@Router		/api/user/delete/:uid [delete]
+//func DeleteFriendController(c *gin.Context) {
+//	uid := c.GetInt64("uid")
+//	deleteFriendReq := req.DeleteFriendReq{}
+//	if err := c.ShouldBind(&deleteFriendReq); err != nil {
+//		resp.ErrorResponse(c, "参数错误")
+//		return
+//	}
+//	response, err := service.DeleteFriendService(uid, deleteFriendReq)
+//	if err != nil {
+//		c.Abort()
+//		resp.ReturnErrorResponse(c, response)
+//		return
+//	}
+//	resp.ReturnSuccessResponse(c, response)
+//}
 //
-//	@Summary	同意好友申请
-//	@Produce	json
-//	@Param		uid	body		int					true	"好友uid"
-//	@Success	200	{object}	resp.ResponseData	"成功"
-//	@Failure	500	{object}	resp.ResponseData	"内部错误"
-//	@Router		/api/user/getApplyList [get]
-func GetUserApplyController(c *gin.Context) {
-	uid := c.GetInt64("uid")
-	pageRequest := pkgReq.PageReq{}
-	if err := c.ShouldBindQuery(&pageRequest); err != nil { //ShouldBind()会自动推导
-		resp.ErrorResponse(c, "参数错误")
-		return
-	}
-	response, err := service.GetUserApplyService(uid, pageRequest)
-	if err != nil {
-		c.Abort()
-		resp.ReturnErrorResponse(c, response)
-		return
-	}
-
-	resp.ReturnSuccessResponse(c, response)
-}
-
-// IsFriendController 是否为好友关系
+//// AgreeFriendController 同意好友申请
+////
+////	@Summary	同意好友申请
+////	@Produce	json
+////	@Param		uid	body		int					true	"好友uid"
+////	@Success	200	{object}	resp.ResponseData	"成功"
+////	@Failure	500	{object}	resp.ResponseData	"内部错误"
+////	@Router		/api/user/agree [put]
+//func AgreeFriendController(c *gin.Context) {
+//	uid := c.GetInt64("uid")
+//	agreeFriendReq := req.AgreeFriendReq{}
+//	if err := c.ShouldBind(&agreeFriendReq); err != nil { //ShouldBind()会自动推导
+//		resp.ErrorResponse(c, "参数错误")
+//		c.Abort()
+//		return
+//	}
+//	response, err := service.AgreeFriendService(uid, agreeFriendReq.Uid)
+//	if err != nil {
+//		c.Abort()
+//		resp.ReturnErrorResponse(c, response)
+//		return
+//	}
+//	resp.ReturnSuccessResponse(c, response)
+//}
 //
-//	@Summary	是否为好友关系
-//	@Produce	json
-//	@Param		uid	body		int					true	"好友uid"
-//	@Success	200	{object}	resp.ResponseData	"成功"
-//	@Failure	500	{object}	resp.ResponseData	"内部错误"
-//	@Router		/api/user/isFriend/:friendUid [get]
-func IsFriendController(c *gin.Context) {
-	uid := c.GetInt64("uid")
-	isFriendReq := req.IsFriendReq{}
-	if err := c.ShouldBindUri(&isFriendReq); err != nil {
-		resp.ErrorResponse(c, "参数错误")
-		return
-	}
-	response, err := service.IsFriendService(uid, isFriendReq.FriendUid)
-	if err != nil {
-		c.Abort()
-		resp.ReturnErrorResponse(c, response)
-		return
-	}
-	resp.ReturnSuccessResponse(c, response)
-}
-
-// UnreadApplyNumController 好友申请未读数量
+//// GetUserApplyController 同意好友申请
+////
+////	@Summary	同意好友申请
+////	@Produce	json
+////	@Param		uid	body		int					true	"好友uid"
+////	@Success	200	{object}	resp.ResponseData	"成功"
+////	@Failure	500	{object}	resp.ResponseData	"内部错误"
+////	@Router		/api/user/getApplyList [get]
+//func GetUserApplyController(c *gin.Context) {
+//	uid := c.GetInt64("uid")
+//	pageRequest := pkgReq.PageReq{}
+//	if err := c.ShouldBindQuery(&pageRequest); err != nil { //ShouldBind()会自动推导
+//		resp.ErrorResponse(c, "参数错误")
+//		return
+//	}
+//	response, err := service.GetUserApplyService(uid, pageRequest)
+//	if err != nil {
+//		c.Abort()
+//		resp.ReturnErrorResponse(c, response)
+//		return
+//	}
 //
-//	@Summary	好友申请未读数量
-//	@Success	200			{object}	resp.ResponseData	"成功"
-//	@Failure	500			{object}	resp.ResponseData	"内部错误"
-//	@Router		/api/user/unreadApplyNum [get]
-func UnreadApplyNumController(c *gin.Context) {
-	uid := c.GetInt64("uid")
-
-	response, err := service.UnreadApplyNumService(uid)
-	if err != nil {
-		c.Abort()
-		resp.ReturnErrorResponse(c, response)
-		return
-	}
-	resp.ReturnSuccessResponse(c, response)
-}
-
-func GetFriendListController(c *gin.Context) {
-	uid := c.GetInt64("uid")
-	pageRequest := pkgReq.PageReq{}
-	if err := c.ShouldBindQuery(&pageRequest); err != nil { //ShouldBind()会自动推导
-		resp.ErrorResponse(c, "参数错误")
-		return
-	}
-	response, err := service.GetFriendListService(uid, pageRequest)
-	if err != nil {
-		c.Abort()
-		resp.ReturnErrorResponse(c, response)
-		return
-	}
-	resp.ReturnSuccessResponse(c, response)
-}
-
-// GetUserInfoByNameController 根据好友昵称搜索好友
-func GetUserInfoByNameController(c *gin.Context) {
-	uid := c.GetInt64("uid")
-	getUserInfoByNameReq := req.GetUserInfoByNameReq{}
-	if err := c.ShouldBindQuery(&getUserInfoByNameReq); err != nil { //ShouldBind()会自动推导
-		resp.ErrorResponse(c, "参数错误")
-		return
-	}
-	response, err := service.GetUserInfoByNameService(uid, getUserInfoByNameReq.Name)
-	if err != nil {
-		c.Abort()
-		resp.ReturnErrorResponse(c, response)
-		return
-	}
-	resp.ReturnSuccessResponse(c, response)
-}
+//	resp.ReturnSuccessResponse(c, response)
+//}
+//
+//// IsFriendController 是否为好友关系
+////
+////	@Summary	是否为好友关系
+////	@Produce	json
+////	@Param		uid	body		int					true	"好友uid"
+////	@Success	200	{object}	resp.ResponseData	"成功"
+////	@Failure	500	{object}	resp.ResponseData	"内部错误"
+////	@Router		/api/user/isFriend/:friendUid [get]
+//func IsFriendController(c *gin.Context) {
+//	uid := c.GetInt64("uid")
+//	isFriendReq := req.IsFriendReq{}
+//	if err := c.ShouldBindUri(&isFriendReq); err != nil {
+//		resp.ErrorResponse(c, "参数错误")
+//		return
+//	}
+//	response, err := service.IsFriendService(uid, isFriendReq.FriendUid)
+//	if err != nil {
+//		c.Abort()
+//		resp.ReturnErrorResponse(c, response)
+//		return
+//	}
+//	resp.ReturnSuccessResponse(c, response)
+//}
+//
+//// UnreadApplyNumController 好友申请未读数量
+////
+////	@Summary	好友申请未读数量
+////	@Success	200			{object}	resp.ResponseData	"成功"
+////	@Failure	500			{object}	resp.ResponseData	"内部错误"
+////	@Router		/api/user/unreadApplyNum [get]
+//func UnreadApplyNumController(c *gin.Context) {
+//	uid := c.GetInt64("uid")
+//
+//	response, err := service.UnreadApplyNumService(uid)
+//	if err != nil {
+//		c.Abort()
+//		resp.ReturnErrorResponse(c, response)
+//		return
+//	}
+//	resp.ReturnSuccessResponse(c, response)
+//}
+//
+//func GetFriendListController(c *gin.Context) {
+//	uid := c.GetInt64("uid")
+//	pageRequest := pkgReq.PageReq{}
+//	if err := c.ShouldBindQuery(&pageRequest); err != nil { //ShouldBind()会自动推导
+//		resp.ErrorResponse(c, "参数错误")
+//		return
+//	}
+//	response, err := service.GetFriendListService(uid, pageRequest)
+//	if err != nil {
+//		c.Abort()
+//		resp.ReturnErrorResponse(c, response)
+//		return
+//	}
+//	resp.ReturnSuccessResponse(c, response)
+//}
+//
+//// GetUserInfoByNameController 根据好友昵称搜索好友
+//func GetUserInfoByNameController(c *gin.Context) {
+//	uid := c.GetInt64("uid")
+//	getUserInfoByNameReq := req.GetUserInfoByNameReq{}
+//	if err := c.ShouldBindQuery(&getUserInfoByNameReq); err != nil { //ShouldBind()会自动推导
+//		resp.ErrorResponse(c, "参数错误")
+//		return
+//	}
+//	response, err := service.GetUserInfoByNameService(uid, getUserInfoByNameReq.Name)
+//	if err != nil {
+//		c.Abort()
+//		resp.ReturnErrorResponse(c, response)
+//		return
+//	}
+//	resp.ReturnSuccessResponse(c, response)
+//}

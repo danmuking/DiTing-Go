@@ -10,21 +10,21 @@ import (
 
 const TableNameUser = "user"
 
-// User 用户表
+// User mapped from table <user>
 type User struct {
-	ID           int64     `gorm:"column:id;primaryKey;autoIncrement:true;comment:用户id" json:"id"`                                  // 用户id
-	Password     string    `gorm:"column:password;comment:用户密码" json:"password"`                                                    // 用户密码
-	Name         string    `gorm:"column:name;comment:用户昵称" json:"name"`                                                            // 用户昵称
-	Avatar       string    `gorm:"column:avatar;comment:用户头像" json:"avatar"`                                                        // 用户头像
-	Sex          int32     `gorm:"column:sex;comment:性别 1为男性，2为女性" json:"sex"`                                                      // 性别 1为男性，2为女性
-	OpenID       string    `gorm:"column:open_id;comment:微信openid用户标识" json:"open_id"`                                              // 微信openid用户标识
-	ActiveStatus int32     `gorm:"column:active_status;default:2;comment:在线状态 1在线 2离线" json:"active_status"`                        // 在线状态 1在线 2离线
-	LastOptTime  time.Time `gorm:"column:last_opt_time;not null;default:CURRENT_TIMESTAMP(3);comment:最后上下线时间" json:"last_opt_time"` // 最后上下线时间
-	IPInfo       string    `gorm:"column:ip_info;comment:ip信息" json:"ip_info"`                                                      // ip信息
-	ItemID       int64     `gorm:"column:item_id;comment:佩戴的徽章id" json:"item_id"`                                                   // 佩戴的徽章id
-	Status       int32     `gorm:"column:status;comment:使用状态 0.正常 1拉黑" json:"status"`                                               // 使用状态 0.正常 1拉黑
-	CreateTime   time.Time `gorm:"column:create_time;not null;default:CURRENT_TIMESTAMP(3);comment:创建时间" json:"create_time"`        // 创建时间
-	UpdateTime   time.Time `gorm:"column:update_time;not null;default:CURRENT_TIMESTAMP(3);comment:修改时间" json:"update_time"`        // 修改时间
+	ID           int64     `gorm:"column:id;primaryKey;autoIncrement:true;comment:id" json:"id"` // id
+	Phone        string    `gorm:"column:phone;not null" json:"phone"`
+	Password     string    `gorm:"column:password;not null" json:"password"`
+	Name         string    `gorm:"column:name;not null" json:"name"`
+	Avatar       string    `gorm:"column:avatar;not null" json:"avatar"`
+	Sex          int32     `gorm:"column:sex;default:3;comment: 123" json:"sex"`                     //  123
+	ActiveStatus int32     `gorm:"column:active_status;default:2;comment: 1 2" json:"active_status"` //  1 2
+	LastOptTime  time.Time `gorm:"column:last_opt_time;not null;default:CURRENT_TIMESTAMP(3)" json:"last_opt_time"`
+	IPInfo       string    `gorm:"column:ip_info;comment:ip" json:"ip_info"`            // ip
+	ItemID       int64     `gorm:"column:item_id;comment:id" json:"item_id"`            // id
+	Status       int32     `gorm:"column:status;default:1;comment: 1. 2" json:"status"` //  1. 2
+	CreateTime   time.Time `gorm:"column:create_time;not null;default:CURRENT_TIMESTAMP(3)" json:"create_time"`
+	UpdateTime   time.Time `gorm:"column:update_time;not null;default:CURRENT_TIMESTAMP(3)" json:"update_time"`
 }
 
 // TableName User's table name

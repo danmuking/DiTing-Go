@@ -28,11 +28,11 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	tableName := _user.userDo.TableName()
 	_user.ALL = field.NewAsterisk(tableName)
 	_user.ID = field.NewInt64(tableName, "id")
+	_user.Phone = field.NewString(tableName, "phone")
 	_user.Password = field.NewString(tableName, "password")
 	_user.Name = field.NewString(tableName, "name")
 	_user.Avatar = field.NewString(tableName, "avatar")
 	_user.Sex = field.NewInt32(tableName, "sex")
-	_user.OpenID = field.NewString(tableName, "open_id")
 	_user.ActiveStatus = field.NewInt32(tableName, "active_status")
 	_user.LastOptTime = field.NewTime(tableName, "last_opt_time")
 	_user.IPInfo = field.NewString(tableName, "ip_info")
@@ -46,24 +46,23 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	return _user
 }
 
-// user 用户表
 type user struct {
 	userDo userDo
 
 	ALL          field.Asterisk
-	ID           field.Int64  // 用户id
-	Password     field.String // 用户密码
-	Name         field.String // 用户昵称
-	Avatar       field.String // 用户头像
-	Sex          field.Int32  // 性别 1为男性，2为女性
-	OpenID       field.String // 微信openid用户标识
-	ActiveStatus field.Int32  // 在线状态 1在线 2离线
-	LastOptTime  field.Time   // 最后上下线时间
-	IPInfo       field.String // ip信息
-	ItemID       field.Int64  // 佩戴的徽章id
-	Status       field.Int32  // 使用状态 0.正常 1拉黑
-	CreateTime   field.Time   // 创建时间
-	UpdateTime   field.Time   // 修改时间
+	ID           field.Int64 // id
+	Phone        field.String
+	Password     field.String
+	Name         field.String
+	Avatar       field.String
+	Sex          field.Int32 //  123
+	ActiveStatus field.Int32 //  1 2
+	LastOptTime  field.Time
+	IPInfo       field.String // ip
+	ItemID       field.Int64  // id
+	Status       field.Int32  //  1. 2
+	CreateTime   field.Time
+	UpdateTime   field.Time
 
 	fieldMap map[string]field.Expr
 }
@@ -81,11 +80,11 @@ func (u user) As(alias string) *user {
 func (u *user) updateTableName(table string) *user {
 	u.ALL = field.NewAsterisk(table)
 	u.ID = field.NewInt64(table, "id")
+	u.Phone = field.NewString(table, "phone")
 	u.Password = field.NewString(table, "password")
 	u.Name = field.NewString(table, "name")
 	u.Avatar = field.NewString(table, "avatar")
 	u.Sex = field.NewInt32(table, "sex")
-	u.OpenID = field.NewString(table, "open_id")
 	u.ActiveStatus = field.NewInt32(table, "active_status")
 	u.LastOptTime = field.NewTime(table, "last_opt_time")
 	u.IPInfo = field.NewString(table, "ip_info")
@@ -119,11 +118,11 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 func (u *user) fillFieldMap() {
 	u.fieldMap = make(map[string]field.Expr, 13)
 	u.fieldMap["id"] = u.ID
+	u.fieldMap["phone"] = u.Phone
 	u.fieldMap["password"] = u.Password
 	u.fieldMap["name"] = u.Name
 	u.fieldMap["avatar"] = u.Avatar
 	u.fieldMap["sex"] = u.Sex
-	u.fieldMap["open_id"] = u.OpenID
 	u.fieldMap["active_status"] = u.ActiveStatus
 	u.fieldMap["last_opt_time"] = u.LastOptTime
 	u.fieldMap["ip_info"] = u.IPInfo

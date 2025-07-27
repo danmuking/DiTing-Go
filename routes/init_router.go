@@ -5,7 +5,6 @@ import (
 	_ "DiTing-Go/docs"
 	"DiTing-Go/pkg/domain/vo/resp"
 	"DiTing-Go/pkg/middleware"
-	"DiTing-Go/service"
 	"DiTing-Go/websocket/global"
 	websocketService "DiTing-Go/websocket/service"
 	"github.com/gin-gonic/gin"
@@ -17,7 +16,7 @@ import (
 
 // InitRouter 初始化路由
 func InitRouter() {
-	go initWebSocket()
+	//go initWebSocket()
 	initGin()
 }
 
@@ -37,68 +36,70 @@ func initGin() {
 	// 不需要身份验证的路由
 	apiPublic := router.Group("/api/public")
 	{
-		//获取标签列表
+		// 用户注册
 		apiPublic.POST("/register", controller.RegisterController)
+		// 验证码发送
+		apiPublic.POST("/captcha", controller.CaptchaController)
 		//新建标签
-		apiPublic.POST("/login", controller.LoginController)
+		//apiPublic.POST("/login", controller.LoginController)
 	}
 
-	apiUser := router.Group("/api/user")
-	apiUser.Use(middleware.JWT())
-	{
-		//添加好友
-		apiUser.POST("/add", controller.ApplyFriendController)
-		//删除好友
-		apiUser.DELETE("/delete/", controller.DeleteFriendController)
-		//同意好友申请
-		apiUser.PUT("/agree", controller.AgreeFriendController)
-		//获取好友申请列表
-		apiUser.GET("/getApplyList", controller.GetUserApplyController)
-		//获取好友列表
-		apiUser.GET("/getFriendList", controller.GetFriendListController)
-		// 判断是否是好友
-		apiUser.GET("/isFriend/:friendUid", controller.IsFriendController)
-		//好友申请未读数量
-		apiUser.GET("/unreadApplyNum", controller.UnreadApplyNumController)
-		//根据好友昵称搜索好友
-		apiUser.GET("/getUserInfoByName", controller.GetUserInfoByNameController)
-		// TODO:测试使用
-		apiUser.GET("/test", test)
-	}
-	apiGroup := router.Group("/api/group")
-	apiGroup.Use(middleware.JWT())
-	{
-		//创建群聊
-		apiGroup.POST("/create", controller.CreateGroupController)
-		apiGroup.DELETE("/:id", service.DeleteGroupService)
-		apiGroup.POST("/join", service.JoinGroupService)
-		apiGroup.POST("/quit", service.QuitGroupService)
-		apiGroup.GET("/getGroupMemberList", service.GetGroupMemberListService)
-		apiGroup.POST("/grantAdministrator", service.GrantAdministratorService)
-		apiGroup.POST("/removeAdministrator", service.RemoveAdministratorService)
-	}
+	//apiUser := router.Group("/api/user")
+	//apiUser.Use(middleware.JWT())
+	//{
+	//	//添加好友
+	//	apiUser.POST("/add", controller.ApplyFriendController)
+	//	//删除好友
+	//	apiUser.DELETE("/delete/", controller.DeleteFriendController)
+	//	//同意好友申请
+	//	apiUser.PUT("/agree", controller.AgreeFriendController)
+	//	//获取好友申请列表
+	//	apiUser.GET("/getApplyList", controller.GetUserApplyController)
+	//	//获取好友列表
+	//	apiUser.GET("/getFriendList", controller.GetFriendListController)
+	//	// 判断是否是好友
+	//	apiUser.GET("/isFriend/:friendUid", controller.IsFriendController)
+	//	//好友申请未读数量
+	//	apiUser.GET("/unreadApplyNum", controller.UnreadApplyNumController)
+	//	//根据好友昵称搜索好友
+	//	apiUser.GET("/getUserInfoByName", controller.GetUserInfoByNameController)
+	//	// TODO:测试使用
+	//	apiUser.GET("/test", test)
+	//}
+	//apiGroup := router.Group("/api/group")
+	//apiGroup.Use(middleware.JWT())
+	//{
+	//	//创建群聊
+	//	apiGroup.POST("/create", controller.CreateGroupController)
+	//	apiGroup.DELETE("/:id", service.DeleteGroupService)
+	//	apiGroup.POST("/join", service.JoinGroupService)
+	//	apiGroup.POST("/quit", service.QuitGroupService)
+	//	apiGroup.GET("/getGroupMemberList", service.GetGroupMemberListService)
+	//	apiGroup.POST("/grantAdministrator", service.GrantAdministratorService)
+	//	apiGroup.POST("/removeAdministrator", service.RemoveAdministratorService)
+	//}
+	//
+	//apiContact := router.Group("/api/contact")
+	//apiContact.Use(middleware.JWT())
+	//{
+	//	apiContact.GET("getContactList", controller.GetContactListController)
+	//	apiContact.GET("getNewContactList", controller.GetNewContactListController)
+	//	apiContact.GET("getMessageList", service.GetContactDetailService)
+	//	apiContact.GET("getNewMsgList", controller.GetNewMsgListController)
+	//	apiContact.POST("userInfo/batch", controller.GetUserInfoBatchController)
+	//}
+	//
+	//apiMsg := router.Group("/api/chat")
+	//apiMsg.Use(middleware.JWT())
+	//{
+	//	apiMsg.POST("msg", controller.SendMessageController)
+	//}
 
-	apiContact := router.Group("/api/contact")
-	apiContact.Use(middleware.JWT())
-	{
-		apiContact.GET("getContactList", controller.GetContactListController)
-		apiContact.GET("getNewContactList", controller.GetNewContactListController)
-		apiContact.GET("getMessageList", service.GetContactDetailService)
-		apiContact.GET("getNewMsgList", controller.GetNewMsgListController)
-		apiContact.POST("userInfo/batch", controller.GetUserInfoBatchController)
-	}
-
-	apiMsg := router.Group("/api/chat")
-	apiMsg.Use(middleware.JWT())
-	{
-		apiMsg.POST("msg", controller.SendMessageController)
-	}
-
-	apiFile := router.Group("/api/file")
-	apiFile.Use(middleware.JWT())
-	{
-		apiFile.GET("getPreSigned", service.GetPreSigned)
-	}
+	//apiFile := router.Group("/api/file")
+	//apiFile.Use(middleware.JWT())
+	//{
+	//	apiFile.GET("getPreSigned", service.GetPreSigned)
+	//}
 
 	err := router.Run(":5000")
 	if err != nil {
