@@ -2,17 +2,17 @@ package service
 
 import (
 	"DiTing-Go/dal/model"
-	"DiTing-Go/dal/query"
+	domainEnum "DiTing-Go/domain/enum"
 	"DiTing-Go/domain/vo/req"
 	"DiTing-Go/global"
 	"DiTing-Go/logic"
 	pkgResp "DiTing-Go/pkg/domain/vo/resp"
 	_ "DiTing-Go/pkg/setting"
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"github.com/pkg/errors"
 )
-
-var q *query.Query = global.Query
 
 // RegisterService 用户注册
 func RegisterService(userReq req.UserRegisterReq) (pkgResp.ResponseData, error) {
@@ -26,6 +26,7 @@ func RegisterService(userReq req.UserRegisterReq) (pkgResp.ResponseData, error) 
 		global.Logger.Infof("验证码不能为空")
 		return pkgResp.ErrorResponseData("验证码不能为空"), errors.New("Business Error")
 	}
+
 	// 验证验证码
 	if !logic.CheckCaptchaProcess(userReq.Phone, userReq.Captcha) {
 		return pkgResp.ErrorResponseData("验证码错误"), errors.New("Business Error")
@@ -47,10 +48,15 @@ func RegisterService(userReq req.UserRegisterReq) (pkgResp.ResponseData, error) 
 		return pkgResp.ErrorResponseData("手机号已存在"), errors.New("Business Error")
 	}
 
+	// 对密码进行md5加密
+	hash := md5.New()
+	hash.Write([]byte(userReq.Password))
+	password := hex.EncodeToString(hash.Sum(nil))
+
 	// 创建用户
 	newUser := model.User{
 		Name:     userReq.Username,
-		Password: userReq.Password,
+		Password: password,
 		Phone:    userReq.Phone,
 		IPInfo:   "{}",
 	}
@@ -61,47 +67,58 @@ func RegisterService(userReq req.UserRegisterReq) (pkgResp.ResponseData, error) 
 	return pkgResp.SuccessResponseDataWithMsg("注册成功"), nil
 }
 
-//// LoginService 用户登录
-//func LoginService(loginReq req.UserLoginReq) (pkgResp.ResponseData, error) {
-//	ctx := context.Background()
-//	user := query.User
-//	userQ := user.WithContext(ctx)
-//	// 查数据库
-//	// 检查密码是否正确
-//	fun := func() (interface{}, error) {
-//		return userQ.Where(user.Name.Eq(loginReq.UserName), user.Password.Eq(loginReq.Password)).First()
-//	}
-//	userR := model.User{}
-//	key := fmt.Sprintf(domainEnum.UserCacheByName, loginReq.UserName)
-//	err := utils.GetData(key, &userR, fun)
-//	if err != nil {
-//		global.Logger.Errorf("查询数据失败: %v", err)
-//		return pkgResp.ErrorResponseData("用户名或密码错误"), errors.New("Business Error")
-//	}
-//	//生成jwt
-//	token, err := utils.GenerateToken(userR.ID)
-//	if err != nil {
-//		global.Logger.Errorf("生成jwt失败 %v", err)
-//		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
-//	}
-//	// 发送用户登录事件
-//	userByte, err := json.Marshal(userR)
-//	if err != nil {
-//		global.Logger.Errorf("json序列化失败 %v", err)
-//	}
-//	msg := &primitive.Message{
-//		Topic: domainEnum.UserLoginTopic,
-//		Body:  userByte,
-//	}
-//	_, _ = global.RocketProducer.SendSync(ctx, msg)
-//	userResp := resp.UserLoginResp{
-//		Token:  token,
-//		Uid:    userR.ID,
-//		Name:   userR.Name,
-//		Avatar: userR.Avatar,
-//	}
-//	return pkgResp.SuccessResponseData(userResp), nil
-//}
+// LoginService 用户登录
+func LoginService(loginReq req.UserLoginReq) (pkgResp.ResponseData, error) {
+	ctx := context.Background()
+	if loginReq.LoginType == domainEnum.LoginByPassword {
+		// 参数校验
+		if loginReq.Phone == "" || loginReq.Password == "" {
+			global.Logger.Infof("loginReq:%v, 用户名和密码不能为空", loginReq)
+			return pkgResp.ErrorResponseData("用户名和密码不能为空"), errors.New("Business Error")
+		}
+		// 检查手机号和密码是否正确
+		if !logic.CheckPassword(ctx, loginReq.Phone, loginReq.Password) {
+			global.Logger.Infof("手机号或密码错误: %s", loginReq.Phone)
+			return pkgResp.ErrorResponseData("用户名或密码错误"), errors.New("Business Error")
+		}
+	} else if loginReq.LoginType == domainEnum.LoginByPhoneCaptcha {
+		// 参数校验
+		if loginReq.Phone == "" || loginReq.Captcha == "" {
+			global.Logger.Infof("loginReq:%v, 手机号和验证码不能为空", loginReq)
+			return pkgResp.ErrorResponseData("手机号和验证码不能为空"), errors.New("Business Error")
+		}
+		// 检查验证码是否正确
+		if !logic.CheckCaptchaProcess(loginReq.Phone, loginReq.Captcha) {
+			global.Logger.Infof("手机号:%s, 验证码错误", loginReq.Phone)
+			return pkgResp.ErrorResponseData("验证码错误"), errors.New("Business Error")
+		}
+	}
+
+	////生成jwt
+	//token, err := utils.GenerateToken(userR.ID)
+	//if err != nil {
+	//	global.Logger.Errorf("生成jwt失败 %v", err)
+	//	return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	//}
+	//// 发送用户登录事件
+	//userByte, err := json.Marshal(userR)
+	//if err != nil {
+	//	global.Logger.Errorf("json序列化失败 %v", err)
+	//}
+	//msg := &primitive.Message{
+	//	Topic: domainEnum.UserLoginTopic,
+	//	Body:  userByte,
+	//}
+	//_, _ = global.RocketProducer.SendSync(ctx, msg)
+	//userResp := resp.UserLoginResp{
+	//	Token:  token,
+	//	Uid:    userR.ID,
+	//	Name:   userR.Name,
+	//	Avatar: userR.Avatar,
+	//}
+	return pkgResp.SuccessResponseDataWithMsg("登录成功"), nil
+}
+
 //
 //func GetUserInfoByNameService(uid int64, name string) (pkgResp.ResponseData, error) {
 //	ctx := context.Background()

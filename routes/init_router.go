@@ -40,8 +40,8 @@ func initGin() {
 		apiPublic.POST("/register", controller.RegisterController)
 		// 验证码发送
 		apiPublic.POST("/captcha", controller.CaptchaController)
-		//新建标签
-		//apiPublic.POST("/login", controller.LoginController)
+		// 用户登录
+		apiPublic.POST("/login", controller.LoginController)
 	}
 
 	//apiUser := router.Group("/api/user")

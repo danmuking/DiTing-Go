@@ -20,7 +20,8 @@ const (
 	RoomFriendCacheByRoomID          = RoomFriend + "%d"
 	RoomFriendCacheByUidAndFriendUid = RoomFriend + "%d_%d"
 
-	// 用户缓存
+	// phoneUid映射
+	PhoneUidMap      = User + "PhoneUid:" + "%s"
 	UserCacheByID    = User + "%d"
 	UserCacheByName  = User + "%s"
 	UserCacheByPhone = User + "Phone:" + "%s"

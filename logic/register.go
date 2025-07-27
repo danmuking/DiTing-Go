@@ -1,30 +1,20 @@
 package logic
 
 import (
-	domainEnum "DiTing-Go/domain/enum"
+	"DiTing-Go/domain/enum"
 	"DiTing-Go/global"
 	"DiTing-Go/utils"
 	"context"
 	"errors"
-	"fmt"
 	"github.com/go-redis/redis"
 	"gorm.io/gorm"
+	"strconv"
 )
-
-// MakeUserPhoneKey 构造用户手机号
-func MakeUserPhoneKey(phone string) string {
-	return fmt.Sprintf(domainEnum.UserCacheByPhone, phone)
-}
-
-// MakeUserCaptchaKey 构造验证码key
-func MakeUserCaptchaKey(phone string) string {
-	return fmt.Sprintf(domainEnum.UserCaptcha, phone)
-}
 
 // CheckCaptchaProcess 检查验证码
 func CheckCaptchaProcess(phone, captcha string) bool {
 	// 检查验证码
-	phoneKey := MakeUserCaptchaKey(phone)
+	phoneKey := utils.MakeUserCaptchaKey(phone)
 	if !CheckCaptcha(phoneKey, captcha) {
 		global.Logger.Infof("验证码错误")
 		return false
@@ -32,20 +22,26 @@ func CheckCaptchaProcess(phone, captcha string) bool {
 	return true
 }
 
-// CheckCaptchaExist 检查验证码是否复查你在
+// CheckCaptchaExist 检查验证码是否存在
 func CheckCaptchaExist(phone string) bool {
 	// 检查验证码
-	phoneKey := MakeUserCaptchaKey(phone)
-	if !CheckCaptcha(phoneKey, "") {
+	phoneKey := utils.MakeUserCaptchaKey(phone)
+	_, err := utils.GetValueFromRedis(phoneKey)
+	if errors.Is(err, redis.Nil) {
 		global.Logger.Infof("phoneKey:%s, 验证码不存在", phoneKey)
 		return false
+	} else if err != nil {
+		global.Logger.Errorf("phoneKey:%s, 查询验证码失败: %v", phoneKey, err)
+		return false
 	}
+
+	global.Logger.Infof("phoneKey:%s, 验证码存在", phoneKey)
 	return true
 }
 
 // CheckPhoneInRedis 检查手机号在redis中是否存在
 func CheckPhoneInRedis(phone string) bool {
-	phoneKey := MakeUserPhoneKey(phone)
+	phoneKey := utils.MakeUserPhoneKey(phone)
 	rst, err := utils.GetValueFromRedis(phoneKey)
 	// 如果redis没查到,查数据库
 	if errors.Is(err, redis.Nil) {
@@ -74,11 +70,14 @@ func CheckPhoneInDB(ctx context.Context, phone string) (bool, error) {
 	}
 	//数据库查到了，返回失败
 	if user != nil {
-		phoneKey := MakeUserPhoneKey(phone)
-		// 更新缓存
-		if err := utils.SetValueToRedis(phoneKey, user, domainEnum.CacheTime); err != nil {
-			global.Logger.Errorf("phoneKey:%s, 设置缓存失败: %s", phoneKey, err.Error())
+		// 将用户信息存入redis
+		phoneKey := utils.MakeUserPhoneKey(phone)
+		// 将phone->user.ID存入redis
+		if err := utils.SetValueToRedis(phoneKey, strconv.FormatInt(user.ID, 10), enum.CacheTime); err != nil {
+			global.Logger.Errorf("phone:%s, 设置phoneUid映射 redis失败: %v", phone, err)
+			return true, err
 		}
+		global.Logger.Infof("phone:%s, 用户已存在", phone)
 		return true, err
 	}
 	return false, nil

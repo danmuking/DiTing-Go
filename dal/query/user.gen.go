@@ -46,23 +46,24 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	return _user
 }
 
+// user 用户表
 type user struct {
 	userDo userDo
 
 	ALL          field.Asterisk
-	ID           field.Int64 // id
-	Phone        field.String
-	Password     field.String
-	Name         field.String
-	Avatar       field.String
-	Sex          field.Int32 //  123
-	ActiveStatus field.Int32 //  1 2
-	LastOptTime  field.Time
-	IPInfo       field.String // ip
-	ItemID       field.Int64  // id
-	Status       field.Int32  //  1. 2
-	CreateTime   field.Time
-	UpdateTime   field.Time
+	ID           field.Int64  // 用户id
+	Phone        field.String // 用户手机
+	Password     field.String // 用户密码
+	Name         field.String // 用户昵称
+	Avatar       field.String // 用户头像
+	Sex          field.Int32  // 性别 1为男性，2为女性，3未知
+	ActiveStatus field.Int32  // 在线状态 1在线 2离线
+	LastOptTime  field.Time   // 最后上下线时间
+	IPInfo       field.String // ip信息，用于显示用户地理位置
+	ItemID       field.Int64  // 佩戴的徽章id
+	Status       field.Int32  // 使用状态 1.正常 2禁用
+	CreateTime   field.Time   // 创建时间
+	UpdateTime   field.Time   // 修改时间
 
 	fieldMap map[string]field.Expr
 }
