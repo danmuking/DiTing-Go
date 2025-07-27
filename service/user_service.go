@@ -8,9 +8,8 @@ import (
 	"DiTing-Go/logic"
 	pkgResp "DiTing-Go/pkg/domain/vo/resp"
 	_ "DiTing-Go/pkg/setting"
+	"DiTing-Go/utils"
 	"context"
-	"crypto/md5"
-	"encoding/hex"
 	"github.com/pkg/errors"
 )
 
@@ -49,9 +48,7 @@ func RegisterService(userReq req.UserRegisterReq) (pkgResp.ResponseData, error) 
 	}
 
 	// 对密码进行md5加密
-	hash := md5.New()
-	hash.Write([]byte(userReq.Password))
-	password := hex.EncodeToString(hash.Sum(nil))
+	password := utils.EncryptPassword(userReq.Password)
 
 	// 创建用户
 	newUser := model.User{
