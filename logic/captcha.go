@@ -28,7 +28,8 @@ func GenerateCaptcha(captchaId string) (string, error) {
 	captchaVal := rand.Intn(10000)         // 生成1000~9999之间的随机数
 	val := fmt.Sprintf("%04d", captchaVal) // 格式化为四位数，不足前面补0
 	//	将验证码存入redis
-	err := utils.SetValueToRedis(captchaId, val, 1*time.Minute)
+	captchaKey := utils.MakeUserCaptchaKey(captchaId)
+	err := utils.SetValueToRedis(captchaKey, val, 1*time.Minute)
 	if err != nil {
 		return "", err
 	}
