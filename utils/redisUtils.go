@@ -4,9 +4,10 @@ import (
 	domainEnum "DiTing-Go/domain/enum"
 	"DiTing-Go/global"
 	"fmt"
+	"time"
+
 	"github.com/goccy/go-json"
 	"github.com/pkg/errors"
-	"time"
 )
 
 // MakeUserPhoneKey 构造用户手机号
@@ -36,6 +37,15 @@ func GetValueFromRedis(key string) (value string, err error) {
 		return "", err
 	}
 	return valueByte, nil
+}
+
+// DeleteValueFromRedis 删除字符串
+func DeleteValueFromRedis(key string) error {
+	if err := global.Rdb.Del(key).Err(); err != nil {
+		global.Logger.Errorf("key:%s, redis delete error: %v", key, err)
+		return errors.New("redis delete error")
+	}
+	return nil
 }
 
 //// GetData 获取数据

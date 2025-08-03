@@ -58,3 +58,27 @@ func LoginController(c *gin.Context) {
 	}
 	resp.ReturnSuccessResponse(c, response)
 }
+
+// CancelController 注销账户
+//
+//	@Summary	注销账户
+//	@Produce	json
+//	@Param		phone		body		string				true	"手机号"
+//	@Success	200			{object}	resp.ResponseData	"成功"
+//	@Failure	500			{object}	resp.ResponseData	"内部错误"
+//	@Router		/api/public/login [post]
+func CancelController(ctx *gin.Context) {
+	userCancel := req.UserCancelReq{}
+	if err := ctx.ShouldBind(&userCancel); err != nil {
+		resp.ErrorResponse(ctx, "参数错误")
+		ctx.Abort()
+		return
+	}
+	response, err := service.CancelService(ctx, userCancel)
+	if err != nil {
+		ctx.Abort()
+		resp.ReturnErrorResponse(ctx, response)
+		return
+	}
+	resp.ReturnSuccessResponse(ctx, response)
+}

@@ -42,6 +42,8 @@ func initGin() {
 		apiPublic.POST("/captcha", controller.CaptchaController)
 		// 用户登录
 		apiPublic.POST("/login", controller.LoginController)
+		// 注销账户
+		apiPublic.DELETE("cancel", controller.CancelController)
 	}
 
 	//apiUser := router.Group("/api/user")

@@ -14,6 +14,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis"
 	"github.com/pkg/errors"
 )
@@ -249,6 +250,64 @@ func getUserInfo(phone string) (model.User, error) {
 	}
 
 	return user, nil
+}
+
+// CancelService 注销账户
+func CancelService(ctx *gin.Context, req req.UserCancelReq) (pkgResp.ResponseData, error) {
+	// 获取用户信息
+	userId, exists := ctx.Get("uid")
+	if !exists {
+		global.Logger.Errorf("用户id不存在")
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
+	userIdStr, ok := userId.(string)
+	if !ok {
+		global.Logger.Errorf("获取用户ID失败: userId=%v", userId)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
+	userInfo, err := getUserInfo(userIdStr)
+	if err != nil {
+		global.Logger.Errorf("获取用户信息失败: userId=%s, err=%v", userId, err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
+	phone := userInfo.Phone
+	captcha := req.Captcha
+
+	// 检查验证码是否正确
+	if !logic.CheckCaptchaProcess(phone, captcha) {
+		global.Logger.Infof("验证码错误: phone=%s", phone)
+		return pkgResp.ErrorResponseData("验证码错误"), errors.New("验证码错误")
+	}
+
+	// 检查用户是否存在
+	if err := checkUserExists(ctx, phone); err != nil {
+		global.Logger.Errorf("检查用户是否存在失败: phone=%s, err=%v", phone, err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
+	// 删除用户缓存
+	if err := logic.DeleteUserInfoFromRedis(userIdStr); err != nil {
+		global.Logger.Errorf("删除用户缓存失败: phone=%s, err=%v", phone, err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
+	// 删除用户ID映射
+	userPhoneKey := utils.MakeUserPhoneKey(phone)
+	if err := utils.DeleteValueFromRedis(userPhoneKey); err != nil {
+		global.Logger.Errorf("删除用户ID映射失败: phone=%s, err=%v", phone, err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
+	// 删除用户数据库
+	if err := logic.DeleteUserInfoFromDB(ctx, userIdStr); err != nil {
+		global.Logger.Errorf("删除用户数据库失败: phone=%s, err=%v", phone, err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+
+	return pkgResp.SuccessResponseDataWithMsg("注销成功"), nil
 }
 
 //
