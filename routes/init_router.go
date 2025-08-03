@@ -4,14 +4,15 @@ import (
 	"DiTing-Go/controller"
 	_ "DiTing-Go/docs"
 	"DiTing-Go/pkg/domain/vo/resp"
-	"DiTing-Go/pkg/middleware"
+	"DiTing-Go/utils/middleware"
 	"DiTing-Go/websocket/global"
 	websocketService "DiTing-Go/websocket/service"
+	"log"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	"log"
-	"net/http"
 )
 
 // InitRouter 初始化路由
