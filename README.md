@@ -58,10 +58,10 @@
         </a>
     </td>
     <td align="center">
-        <a href="https://github.com/quan-CN">
-            <img src="https://avatars.githubusercontent.com/u/161594079?v=4" width="100;" alt="quan-CN"/>
+        <a href="https://github.com/wangQuanYaa">
+            <img src="https://avatars.githubusercontent.com/u/161594079?v=4" width="100;" alt="wangQuanYaa"/>
             <br />
-            <sub><b>Quan</b></sub>
+            <sub><b>WangQuanYaa</b></sub>
         </a>
     </td></tr>
 </table>
