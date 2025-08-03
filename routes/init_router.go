@@ -49,7 +49,7 @@ func initGin() {
 	apiUser.Use(middleware.JWT())
 	{
 		// 注销账户
-		apiPublic.DELETE("cancel", controller.CancelController)
+		apiUser.DELETE("/cancel", controller.CancelController)
 		//	//添加好友
 		//	apiUser.POST("/add", controller.ApplyFriendController)
 		//	//删除好友

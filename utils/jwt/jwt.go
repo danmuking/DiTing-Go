@@ -2,10 +2,11 @@ package jwt
 
 import (
 	"DiTing-Go/global"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
-	"time"
 )
 
 var jwtSecret = []byte(viper.GetString("jwt.secret"))
@@ -40,9 +41,8 @@ func GenerateToken(uid int64) (string, error) {
 // ParseToken 解析token
 func ParseToken(tokenString string) (*JwtClaims, error) {
 	// 解析token
-	claims := &JwtClaims{}
 	token, err := jwt.ParseWithClaims(tokenString, &JwtClaims{}, func(token *jwt.Token) (any, error) {
-		return claims, nil
+		return jwtSecret, nil
 	})
 	if err != nil {
 		return nil, err
