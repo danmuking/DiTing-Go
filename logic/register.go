@@ -54,7 +54,7 @@ func CheckPhoneInRedis(phone string) bool {
 		return false
 	}
 	// 如果redis查到了,直接返回
-	if rst != "" {
+	if rst != nil {
 		return true
 	}
 	return false

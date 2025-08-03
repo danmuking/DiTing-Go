@@ -1,10 +1,10 @@
 package logic
 
 import (
+	"DiTing-Go/global"
 	"DiTing-Go/utils"
+	"encoding/json"
 	"fmt"
-	"github.com/go-redis/redis"
-	"github.com/pkg/errors"
 	"math/rand"
 	"time"
 )
@@ -15,12 +15,20 @@ func CheckCaptcha(captchaId, captchaValue string) bool {
 		return false
 	}
 	//	根据captchaId从redis查
-	captcha, err := utils.GetValueFromRedis(captchaId)
-	if errors.Is(err, redis.Nil) && captchaValue == "1234" {
-		return true
-	}
+	captchaByte, err := utils.GetValueFromRedis(captchaId)
 	if err != nil {
+		global.Logger.Errorf("get captcha from redis error: %v", err)
 		return false
+	}
+	var captcha string
+	err = json.Unmarshal(captchaByte, &captcha)
+	if err != nil {
+		global.Logger.Errorf("json unmarshal error: %v", err)
+		return false
+	}
+	if captchaValue == "1234" {
+		global.Logger.Infof("captcha is 1234, pass")
+		return true
 	}
 	// 1234直接放行
 	return captchaValue == captcha

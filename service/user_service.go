@@ -11,6 +11,7 @@ import (
 	"DiTing-Go/utils"
 	"DiTing-Go/utils/jwt"
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -220,15 +221,17 @@ func getUserInfo(phone string) (model.User, error) {
 	userPhoneKey := utils.MakeUserPhoneKey(phone)
 
 	// 从Redis获取用户ID
-	userId, err := utils.GetValueFromRedis(userPhoneKey)
+	userIdByte, err := utils.GetValueFromRedis(userPhoneKey)
+	var userId int64
+	json.Unmarshal(userIdByte, &userId)
 	if err != nil && !errors.Is(err, redis.Nil) {
 		global.Logger.Errorf("从Redis获取用户ID失败: userPhoneKey=%s, err=%v", userPhoneKey, err)
 		return model.User{}, err
 	}
 
 	// 如果Redis中有用户ID，尝试获取用户信息
-	if userId != "" {
-		user, err := logic.GetUserInfo2Redis(userId)
+	if userId != 0 {
+		user, err := logic.GetUserInfo2Redis(fmt.Sprintf("%d", userId))
 		if err == nil {
 			return user, nil
 		}

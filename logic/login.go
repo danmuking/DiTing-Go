@@ -15,43 +15,68 @@ import (
 
 // CheckPassword 校验用户名密码是否匹配
 func CheckPassword(ctx context.Context, phone, password string) bool {
+	// 参数验证
+	if phone == "" || password == "" {
+		global.Logger.Warnf("CheckPassword: phone or password is empty, phone: %s", phone)
+		return false
+	}
+
 	// 密码长度必须大于6
 	if len(password) < 6 {
+		global.Logger.Warnf("CheckPassword: password too short, phone: %s, password length: %d", phone, len(password))
 		return false
 	}
 
 	// 对密码进行md5加密
-	password = utils.EncryptPassword(password)
+	encryptedPassword := utils.EncryptPassword(password)
 
-	// 查询映射
+	// 首先尝试从Redis获取用户ID
 	userPhoneKey := utils.MakeUserPhoneKey(phone)
-	userId, err := utils.GetValueFromRedis(userPhoneKey)
-	if err == nil && userId != "" {
-		global.Logger.Infof("get userId from redis success, phone: %s, userId: %s", phone, userId)
+	userIdBytes, err := utils.GetValueFromRedis(userPhoneKey)
+
+	if err == nil && len(userIdBytes) > 0 {
+
+		userId := string(userIdBytes)
+		global.Logger.Infof("CheckPassword: get userId from redis success, phone: %s, userId: %s", phone, userId)
+
+		// 从Redis获取用户信息
 		userInfo, err := GetUserInfo2Redis(userId)
-		if errors.Is(err, redis.Nil) {
-			global.Logger.Errorf("get user info from redis failed, phone: %s, userId: %s, err: %v", phone, userId, err)
-		} else if err != nil {
-			global.Logger.Errorf("get user info from redis failed, phone: %s, userId: %s, err: %v", phone, userId, err)
-			return false
+		if err != nil {
+			if errors.Is(err, redis.Nil) {
+				global.Logger.Infof("CheckPassword: user info not found in redis, phone: %s, userId: %s", phone, userId)
+			} else {
+				global.Logger.Errorf("CheckPassword: get user info from redis failed, phone: %s, userId: %s, err: %v", phone, userId, err)
+			}
+			// Redis获取失败，继续查询数据库
 		} else {
-			global.Logger.Infof("get user info from redis success, phone: %s, userId: %s, userInfo: %v", phone, userId, userInfo)
-			return userInfo.Password == password
+			// Redis获取成功，比较密码
+			global.Logger.Infof("CheckPassword: get user info from redis success, phone: %s, userId: %s", phone, userId)
+			return userInfo.Password == encryptedPassword
 		}
 	} else if errors.Is(err, redis.Nil) {
-		global.Logger.Infof("get userId from redis failed, phone: %s, userId not found", phone)
+		global.Logger.Infof("CheckPassword: userId not found in redis, phone: %s", phone)
 	} else {
-		global.Logger.Errorf("get userId from redis failed, phone: %s, err: %v", phone, err)
+		global.Logger.Errorf("CheckPassword: get userId from redis failed, phone: %s, err: %v", phone, err)
 	}
 
-	// 如果redis查不到,查数据库
+	// Redis查询失败，从数据库查询
+	global.Logger.Infof("CheckPassword: querying user from database, phone: %s", phone)
 	userInfo, err := utils.QueryUserByPhone(ctx, phone)
 	if err != nil {
-		global.Logger.Errorf("phone %s,failed to query user by phone: %v", phone, err)
+		global.Logger.Errorf("CheckPassword: failed to query user by phone, phone: %s, err: %v", phone, err)
 		return false
 	}
 
-	return userInfo.Password == password
+	if userInfo == nil {
+		global.Logger.Warnf("CheckPassword: user not found in database, phone: %s", phone)
+		return false
+	}
+
+	// 比较密码
+	passwordMatch := userInfo.Password == encryptedPassword
+	global.Logger.Infof("CheckPassword: password check result, phone: %s, match: %v", phone, passwordMatch)
+
+	return passwordMatch
 }
 
 func SetUserInfo2Redis(userInfo model.User) error {

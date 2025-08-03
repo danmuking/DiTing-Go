@@ -6,6 +6,9 @@ import (
 	"DiTing-Go/domain/enum"
 	"DiTing-Go/global"
 	"context"
+
+	"github.com/pkg/errors"
+	"gorm.io/gorm"
 )
 
 func CreateUser(ctx context.Context, userInfo model.User) error {
@@ -15,12 +18,12 @@ func CreateUser(ctx context.Context, userInfo model.User) error {
 	userId := userInfo.ID
 	// 检查用户是否存在
 	userResult, err := userQ.Where(user.ID.Eq(userId)).First()
-	if err != nil {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		global.Logger.Errorf("user:%v, 检查用户是否存在失败: %v", userResult, err)
 		return err
 	}
 	// 将用户状态更新为正常
-	if userResult.Status == int32(enum.UserStatusCancel) {
+	if userResult != nil && userResult.Status == int32(enum.UserStatusCancel) {
 		global.Logger.Errorf("user:%v, 用户已注销", userResult)
 		userInfo.Status = enum.UserStatusNormal
 		if err := userQ.Save(&userInfo); err != nil {

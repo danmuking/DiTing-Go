@@ -23,6 +23,10 @@ func MakeUserCaptchaKey(phone string) string {
 // SetValueToRedis 设置字符串
 func SetValueToRedis(key string, value string, expireTime time.Duration) error {
 	valueByte, err := json.Marshal(value)
+	if err != nil {
+		global.Logger.Errorf("json marshal error: %v", err)
+		return errors.New("json marshal error")
+	}
 	if err = global.Rdb.Set(key, valueByte, expireTime).Err(); err != nil {
 		global.Logger.Errorf("key:%s, value:%s, redis set error: %v", key, valueByte, err)
 		return errors.New("redis set error")
@@ -31,10 +35,10 @@ func SetValueToRedis(key string, value string, expireTime time.Duration) error {
 }
 
 // GetValueFromRedis 获取字符串
-func GetValueFromRedis(key string) (value string, err error) {
-	valueByte, err := global.Rdb.Get(key).Result()
+func GetValueFromRedis(key string) (value []byte, err error) {
+	valueByte, err := global.Rdb.Get(key).Bytes()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	return valueByte, nil
 }
