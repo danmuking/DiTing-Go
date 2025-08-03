@@ -12,7 +12,7 @@ import (
 // SetString 设置字符串
 func SetString(key string, value any) error {
 	valueByte, err := json.Marshal(value)
-	if err = global.Rdb.Set(key, valueByte, domainEnum.CacheTime).Err(); err != nil {
+	if err = global.Rdb.Set(key, valueByte, domainEnum.DefaultCacheTime).Err(); err != nil {
 		return errors.New("redis set error")
 	}
 	return nil

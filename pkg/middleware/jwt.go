@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"DiTing-Go/pkg/domain/vo/resp"
-	"DiTing-Go/pkg/utils"
+	"DiTing-Go/utils/jwt"
 	"github.com/gin-gonic/gin"
 	"strings"
 )
@@ -27,7 +27,7 @@ func JWT() gin.HandlerFunc {
 			return
 		}
 		// parts[1]是获取到的tokenString，我们使用之前定义好的解析JWT的函数来解析它
-		token, err := utils.ParseToken(parts[1])
+		token, err := jwt.ParseToken(parts[1])
 		if err != nil {
 			resp.ErrorResponse(c, "无权限访问")
 			c.Abort()

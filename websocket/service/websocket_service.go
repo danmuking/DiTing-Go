@@ -2,7 +2,7 @@ package service
 
 import (
 	global2 "DiTing-Go/global"
-	"DiTing-Go/pkg/utils"
+	"DiTing-Go/utils/jwt"
 	"DiTing-Go/websocket/global"
 	"fmt"
 	"github.com/gorilla/websocket"
@@ -39,7 +39,7 @@ func Connect(w http.ResponseWriter, r *http.Request) {
 	//url中的获取token参数
 	params := r.URL.Query()
 	token := params.Get("token")
-	tokenInfo, err := utils.ParseToken(token)
+	tokenInfo, err := jwt.ParseToken(token)
 	if err != nil {
 		global2.Logger.Errorf("无权限访问: %v", err)
 		return
@@ -135,7 +135,7 @@ func parseJwt(r *http.Request) (*int64, error) {
 		return nil, errors.New("无权限访问")
 	}
 	// parts[1]是获取到的tokenString，我们使用之前定义好的解析JWT的函数来解析它
-	token, err := utils.ParseToken(parts[1])
+	token, err := jwt.ParseToken(parts[1])
 	if err != nil {
 		return nil, errors.New("无权限访问")
 	}

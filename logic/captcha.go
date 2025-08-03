@@ -3,6 +3,8 @@ package logic
 import (
 	"DiTing-Go/utils"
 	"fmt"
+	"github.com/go-redis/redis"
+	"github.com/pkg/errors"
 	"math/rand"
 	"time"
 )
@@ -14,11 +16,14 @@ func CheckCaptcha(captchaId, captchaValue string) bool {
 	}
 	//	根据captchaId从redis查
 	captcha, err := utils.GetValueFromRedis(captchaId)
+	if errors.Is(err, redis.Nil) && captchaValue == "1234" {
+		return true
+	}
 	if err != nil {
 		return false
 	}
 	// 1234直接放行
-	return captchaValue == captcha || captchaValue == "1234"
+	return captchaValue == captcha
 }
 
 // GenerateCaptcha 生成验证码

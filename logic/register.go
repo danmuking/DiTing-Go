@@ -6,9 +6,9 @@ import (
 	"DiTing-Go/utils"
 	"context"
 	"errors"
+	"fmt"
 	"github.com/go-redis/redis"
 	"gorm.io/gorm"
-	"strconv"
 )
 
 // CheckCaptchaProcess 检查验证码
@@ -73,7 +73,7 @@ func CheckPhoneInDB(ctx context.Context, phone string) (bool, error) {
 		// 将用户信息存入redis
 		phoneKey := utils.MakeUserPhoneKey(phone)
 		// 将phone->user.ID存入redis
-		if err := utils.SetValueToRedis(phoneKey, strconv.FormatInt(user.ID, 10), enum.CacheTime); err != nil {
+		if err := utils.SetValueToRedis(phoneKey, fmt.Sprintf("%d", user.ID), enum.DefaultCacheTime); err != nil {
 			global.Logger.Errorf("phone:%s, 设置phoneUid映射 redis失败: %v", phone, err)
 			return true, err
 		}

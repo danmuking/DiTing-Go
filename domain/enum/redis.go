@@ -3,7 +3,6 @@ package enum
 import "time"
 
 const (
-	CacheTime  = 7 * 24 * time.Hour
 	Project    = "diting:"
 	User       = Project + "User"
 	UserFriend = Project + "userFriend:"
@@ -35,4 +34,9 @@ const (
 
 	// 会话缓存
 	ContactCacheById = Contact + "%d"
+)
+
+const (
+	DefaultCacheTime = 7 * 24 * time.Hour
+	NotExpireTime    = 10 * 365 * 24 * time.Hour
 )
