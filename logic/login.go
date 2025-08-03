@@ -105,3 +105,18 @@ func GetUserInfo2DB(phone string) (model.User, error) {
 	global.Logger.Infof("phone %s, user info found in db: %v", phone, userInfo)
 	return *userInfo, nil
 }
+
+func GetUserInfo2DBById(ctx context.Context, userId string) (model.User, error) {
+	if userId == "" {
+		return model.User{}, errors.New("userId is zero")
+	}
+
+	userInfo, err := utils.QueryUserByID(ctx, userId)
+	if err != nil {
+		global.Logger.Errorf("userId %s, failed to query user by phone: %v", userId, err)
+		return model.User{}, err
+	}
+
+	global.Logger.Infof("userId %s, user info found in db: %v", userId, userInfo)
+	return *userInfo, nil
+}

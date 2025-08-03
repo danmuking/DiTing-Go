@@ -34,8 +34,13 @@ func RegisterService(userReq req.UserRegisterReq) (pkgResp.ResponseData, error) 
 	}
 
 	// 检查用户是否已存在
-	if err := checkUserExists(ctx, userReq.Phone); err != nil {
-		return pkgResp.ErrorResponseData(err.Error()), errors.New("Business Error")
+	exists, err := checkUserExists(ctx, userReq.Phone)
+	if err != nil {
+		global.Logger.Errorf("检查用户是否存在失败: phone=%s, err=%v", userReq.Phone, err)
+		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+	if exists {
+		return pkgResp.ErrorResponseData("手机号已存在"), errors.New("Business Error")
 	}
 
 	// 创建用户
@@ -82,26 +87,26 @@ func validateRegisterCaptcha(phone, captcha string) error {
 }
 
 // checkUserExists 检查用户是否已存在
-func checkUserExists(ctx context.Context, phone string) error {
+func checkUserExists(ctx context.Context, phone string) (bool, error) {
 	// 先检查Redis缓存
 	if logic.CheckPhoneInRedis(phone) {
 		global.Logger.Infof("手机号已存在: phone=%s", phone)
-		return errors.New("手机号已存在")
+		return true, nil
 	}
 
 	// 检查数据库
 	exists, err := logic.CheckPhoneInDB(ctx, phone)
 	if err != nil {
 		global.Logger.Errorf("检查用户是否存在失败: phone=%s, err=%v", phone, err)
-		return errors.New("系统错误，请稍后再试")
+		return false, err
 	}
 
 	if exists {
 		global.Logger.Infof("手机号已存在: phone=%s", phone)
-		return errors.New("手机号已存在")
+		return true, nil
 	}
 
-	return nil
+	return false, nil
 }
 
 // createNewUser 创建新用户
@@ -261,13 +266,15 @@ func CancelService(ctx *gin.Context, req req.UserCancelReq) (pkgResp.ResponseDat
 		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 
-	userIdStr, ok := userId.(string)
+	userIdNum, ok := userId.(int64)
+	userIdStr := fmt.Sprintf("%d", userIdNum)
+
 	if !ok {
 		global.Logger.Errorf("获取用户ID失败: userId=%v", userId)
 		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
 	}
 
-	userInfo, err := getUserInfo(userIdStr)
+	userInfo, err := logic.GetUserInfo2DBById(ctx, userIdStr)
 	if err != nil {
 		global.Logger.Errorf("获取用户信息失败: userId=%s, err=%v", userId, err)
 		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
@@ -283,9 +290,14 @@ func CancelService(ctx *gin.Context, req req.UserCancelReq) (pkgResp.ResponseDat
 	}
 
 	// 检查用户是否存在
-	if err := checkUserExists(ctx, phone); err != nil {
+	userExists, err := checkUserExists(ctx, phone)
+	if err != nil {
 		global.Logger.Errorf("检查用户是否存在失败: phone=%s, err=%v", phone, err)
 		return pkgResp.ErrorResponseData("系统繁忙，请稍后再试~"), errors.New("Business Error")
+	}
+	if !userExists {
+		global.Logger.Errorf("用户不存在: phone=%s", phone)
+		return pkgResp.ErrorResponseData("用户不存在"), errors.New("Business Error")
 	}
 
 	// 删除用户缓存
