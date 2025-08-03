@@ -86,7 +86,7 @@ func GetUserInfo2Redis(userId string) (model.User, error) {
 		return model.User{}, err
 	}
 
-	global.Logger.Infof("userId %d, user info found in redis: %v", userId, userInfo)
+	global.Logger.Infof("userId %s, user info found in redis: %v", userId, userInfo)
 	return userInfo, nil
 }
 
