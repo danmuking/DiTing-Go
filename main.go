@@ -4,6 +4,7 @@ import (
 	//_ "DiTing-Go/event/listener"
 	"DiTing-Go/global"
 	"DiTing-Go/routes"
+	"DiTing-Go/utils/setting"
 )
 
 // swagger 中添加header.Authorization:token 校验 token
@@ -11,6 +12,8 @@ import (
 // @in header
 // @name Authorization
 func main() {
+	// 初始化配置
+	setting.ConfigInit()
 	// 初始化数据库连接
 	global.DBInit()
 	//初始化redis连接

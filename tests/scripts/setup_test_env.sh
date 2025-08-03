@@ -18,10 +18,23 @@ else
     echo "⚠️  未检测到Docker环境，将使用本地服务"
 fi
 
+# 获取项目根目录
+PROJECT_ROOT=$(pwd)
+echo "项目根目录: $PROJECT_ROOT"
+
 # 设置测试环境变量
 echo "设置测试环境变量..."
 export GIN_MODE=test
 export TEST_ENV=test
+export PROJECT_ROOT="$PROJECT_ROOT"
+
+# 检查配置文件是否存在
+if [ -f "$PROJECT_ROOT/conf/config.yml" ]; then
+    echo "✅ 配置文件存在: $PROJECT_ROOT/conf/config.yml"
+else
+    echo "❌ 配置文件不存在: $PROJECT_ROOT/conf/config.yml"
+    exit 1
+fi
 
 # 检查数据库连接
 echo "检查数据库连接..."
@@ -41,6 +54,11 @@ echo "清理旧的测试数据..."
 
 echo ""
 echo "✅ 测试环境设置完成"
+echo ""
+echo "环境变量设置:"
+echo "  GIN_MODE=$GIN_MODE"
+echo "  TEST_ENV=$TEST_ENV"
+echo "  PROJECT_ROOT=$PROJECT_ROOT"
 echo ""
 echo "可以运行以下命令开始测试:"
 echo "  ./tests/scripts/run_tests.sh"

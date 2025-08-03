@@ -3,78 +3,36 @@ package unit
 import (
 	"DiTing-Go/domain/enum"
 	"DiTing-Go/domain/vo/req"
+	"DiTing-Go/global"
 	"DiTing-Go/service"
 	"DiTing-Go/utils"
+	"DiTing-Go/utils/setting"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
-// TestUserLifecycleFlow 测试用户完整生命周期流程
-func TestUserLifecycleFlow(t *testing.T) {
-	// 设置测试环境
+// 初始化函数，在包加载时执行
+func init() {
+	// 设置测试环境变量
 	gin.SetMode(gin.TestMode)
-	ctx := &gin.Context{}
-	ctx.Set("uid", int64(12345))
 
-	// 测试数据
-	testPhone := "13800138000"
-	testUsername := "testuser"
-	testPassword := "123456"
-	testCaptcha := "123456"
+	// 初始化配置
+	setting.ConfigInit()
 
-	// 步骤1: 用户注册
-	t.Log("=== 步骤1: 用户注册测试 ===")
-	registerReq := req.UserRegisterReq{
-		Username: testUsername,
-		Password: testPassword,
-		Phone:    testPhone,
-		Captcha:  testCaptcha,
-	}
+	// 初始化简单的测试日志
+	global.Logger = logrus.New()
+	global.Logger.SetOutput(gin.DefaultWriter)
+	global.Logger.SetLevel(logrus.InfoLevel)
 
-	// 设置验证码
-	setupCaptcha(testPhone, testCaptcha)
-	registerResp, err := service.RegisterService(registerReq)
-	assert.NoError(t, err)
-	assert.True(t, registerResp.Success)
+	// 初始化Redis
+	global.RedisInit()
 
-	// 步骤2: 用户登录（密码登录）
-	t.Log("=== 步骤2: 用户密码登录测试 ===")
-	loginReq := req.UserLoginReq{
-		Phone:     testPhone,
-		Password:  testPassword,
-		LoginType: enum.LoginByPassword,
-	}
-
-	loginResp, err := service.LoginService(loginReq)
-	assert.NoError(t, err)
-	assert.True(t, loginResp.Success)
-
-	// 步骤3: 用户登录（验证码登录）
-	t.Log("=== 步骤3: 用户验证码登录测试 ===")
-	loginByCaptchaReq := req.UserLoginReq{
-		Phone:     testPhone,
-		Captcha:   testCaptcha,
-		LoginType: enum.LoginByPhoneCaptcha,
-	}
-
-	setupCaptcha(testPhone, testCaptcha)
-	loginByCaptchaResp, err := service.LoginService(loginByCaptchaReq)
-	assert.NoError(t, err)
-	assert.True(t, loginByCaptchaResp.Success)
-
-	// 步骤4: 用户注销
-	t.Log("=== 步骤4: 用户注销测试 ===")
-	cancelReq := req.UserCancelReq{
-		Captcha: testCaptcha,
-	}
-
-	setupCaptcha(testPhone, testCaptcha)
-	cancelResp, err := service.CancelService(ctx, cancelReq)
-	assert.NoError(t, err)
-	assert.True(t, cancelResp.Success)
+	// 初始化数据库
+	global.DBInit()
 }
 
 // TestRegisterValidation 测试注册参数验证

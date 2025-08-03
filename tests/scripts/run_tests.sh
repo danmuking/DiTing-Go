@@ -15,8 +15,14 @@ fi
 echo "检查依赖..."
 go mod tidy
 
-# 设置测试环境变量
+# 获取项目根目录并设置环境变量
+PROJECT_ROOT=$(pwd)
+export PROJECT_ROOT="$PROJECT_ROOT"
 export GIN_MODE=test
+export TEST_ENV=test
+
+echo "项目根目录: $PROJECT_ROOT"
+echo "环境变量设置完成"
 
 # 运行测试的函数
 run_test() {
@@ -29,6 +35,8 @@ run_test() {
     echo "命令: go test -v -run $test_pattern $test_dir"
     echo ""
     
+    # 确保在项目根目录运行测试
+    cd "$PROJECT_ROOT"
     go test -v -run "$test_pattern" "$test_dir"
     
     if [ $? -eq 0 ]; then
@@ -85,6 +93,9 @@ show_menu() {
 run_all_tests() {
     echo ""
     echo "=== 运行所有测试 ==="
+    
+    # 确保在项目根目录运行测试
+    cd "$PROJECT_ROOT"
     
     test_dirs=(
         "./tests/unit/"
@@ -182,21 +193,25 @@ while true; do
         20)
             echo ""
             echo "=== 运行所有单元测试 ==="
+            cd "$PROJECT_ROOT"
             go test -v ./tests/unit/...
             ;;
         21)
             echo ""
             echo "=== 运行所有集成测试 ==="
+            cd "$PROJECT_ROOT"
             go test -v ./tests/integration/...
             ;;
         22)
             echo ""
             echo "=== 运行所有E2E测试 ==="
+            cd "$PROJECT_ROOT"
             go test -v ./tests/e2e/...
             ;;
         23)
             echo ""
             echo "=== 运行所有性能测试 ==="
+            cd "$PROJECT_ROOT"
             go test -v ./tests/performance/...
             ;;
         24)

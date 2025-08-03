@@ -8,7 +8,6 @@ import (
 	"DiTing-Go/global"
 	"DiTing-Go/logic"
 	pkgResp "DiTing-Go/pkg/domain/vo/resp"
-	_ "DiTing-Go/pkg/setting"
 	"DiTing-Go/utils"
 	"DiTing-Go/utils/jwt"
 	"context"

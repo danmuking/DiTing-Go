@@ -3,14 +3,37 @@ package e2e
 import (
 	"DiTing-Go/domain/enum"
 	"DiTing-Go/domain/vo/req"
+	"DiTing-Go/global"
 	"DiTing-Go/service"
 	"DiTing-Go/utils"
+	"DiTing-Go/utils/setting"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
+
+// 初始化函数，在包加载时执行
+func init() {
+	// 设置测试环境变量
+	gin.SetMode(gin.TestMode)
+
+	// 初始化配置
+	setting.ConfigInit()
+
+	// 初始化简单的测试日志
+	global.Logger = logrus.New()
+	global.Logger.SetOutput(gin.DefaultWriter)
+	global.Logger.SetLevel(logrus.InfoLevel)
+
+	// 初始化Redis
+	global.RedisInit()
+
+	// 初始化数据库
+	global.DBInit()
+}
 
 // TestUserCompleteWorkflow 测试用户完整工作流
 func TestUserCompleteWorkflow(t *testing.T) {
