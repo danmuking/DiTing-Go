@@ -43,32 +43,32 @@ func initGin() {
 		apiPublic.POST("/captcha", controller.CaptchaController)
 		// 用户登录
 		apiPublic.POST("/login", controller.LoginController)
-		// 注销账户
-		apiPublic.DELETE("cancel", controller.CancelController)
 	}
 
-	//apiUser := router.Group("/api/user")
-	//apiUser.Use(middleware.JWT())
-	//{
-	//	//添加好友
-	//	apiUser.POST("/add", controller.ApplyFriendController)
-	//	//删除好友
-	//	apiUser.DELETE("/delete/", controller.DeleteFriendController)
-	//	//同意好友申请
-	//	apiUser.PUT("/agree", controller.AgreeFriendController)
-	//	//获取好友申请列表
-	//	apiUser.GET("/getApplyList", controller.GetUserApplyController)
-	//	//获取好友列表
-	//	apiUser.GET("/getFriendList", controller.GetFriendListController)
-	//	// 判断是否是好友
-	//	apiUser.GET("/isFriend/:friendUid", controller.IsFriendController)
-	//	//好友申请未读数量
-	//	apiUser.GET("/unreadApplyNum", controller.UnreadApplyNumController)
-	//	//根据好友昵称搜索好友
-	//	apiUser.GET("/getUserInfoByName", controller.GetUserInfoByNameController)
-	//	// TODO:测试使用
-	//	apiUser.GET("/test", test)
-	//}
+	apiUser := router.Group("/api/user")
+	apiUser.Use(middleware.JWT())
+	{
+		// 注销账户
+		apiPublic.DELETE("cancel", controller.CancelController)
+		//	//添加好友
+		//	apiUser.POST("/add", controller.ApplyFriendController)
+		//	//删除好友
+		//	apiUser.DELETE("/delete/", controller.DeleteFriendController)
+		//	//同意好友申请
+		//	apiUser.PUT("/agree", controller.AgreeFriendController)
+		//	//获取好友申请列表
+		//	apiUser.GET("/getApplyList", controller.GetUserApplyController)
+		//	//获取好友列表
+		//	apiUser.GET("/getFriendList", controller.GetFriendListController)
+		//	// 判断是否是好友
+		//	apiUser.GET("/isFriend/:friendUid", controller.IsFriendController)
+		//	//好友申请未读数量
+		//	apiUser.GET("/unreadApplyNum", controller.UnreadApplyNumController)
+		//	//根据好友昵称搜索好友
+		//	apiUser.GET("/getUserInfoByName", controller.GetUserInfoByNameController)
+		//	// TODO:测试使用
+		//	apiUser.GET("/test", test)
+	}
 	//apiGroup := router.Group("/api/group")
 	//apiGroup.Use(middleware.JWT())
 	//{
