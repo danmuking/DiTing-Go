@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/go-redis/redis"
 	"gorm.io/gorm"
 )
@@ -68,8 +69,8 @@ func CheckPhoneInDB(ctx context.Context, phone string) (bool, error) {
 		global.Logger.Errorf("phone:%s, 查询手机号失败: %v", phone, err)
 		return true, err
 	}
-	//数据库查到了，返回失败
-	if user != nil {
+	//数据库查到了，返回失败,且用户状态为正常
+	if user != nil && user.Status == enum.UserStatusNormal {
 		// 将用户信息存入redis
 		phoneKey := utils.MakeUserPhoneKey(phone)
 		// 将phone->user.ID存入redis
